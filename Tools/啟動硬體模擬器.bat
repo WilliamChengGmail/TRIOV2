@@ -1,2 +1,2 @@
 @echo off
-start "" "%~dp0Simulator_bin\TRIO2026.Simulator.exe"
+start "" "%~dp0Simulator_bin\TRIOV2.Simulator.exe"
