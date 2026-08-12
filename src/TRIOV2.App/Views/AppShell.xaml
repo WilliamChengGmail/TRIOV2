@@ -1,0 +1,38 @@
+<Window x:Class="TRIO2026.App.Views.AppShell"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:TRIO2026.App.Controls"
+        xmlns:pages="clr-namespace:TRIO2026.App.Views.Pages"
+        Title="TRIO2026"
+        WindowStyle="None"
+        WindowState="Maximized"
+        ResizeMode="NoResize"
+        Background="{DynamicResource AppBackgroundBrush}">
+
+    <!-- Viewbox 等比縮放：以 1920×1080 為設計基準 -->
+    <Viewbox Stretch="Uniform" StretchDirection="Both">
+        <Border Width="1920" Height="1080">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0.5,1">
+                    <GradientStop Color="{DynamicResource SplashGradient1}" Offset="0" />
+                    <GradientStop Color="{DynamicResource SplashGradient2}" Offset="0.5" />
+                    <GradientStop Color="{DynamicResource SplashGradient3}" Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
+
+            <Grid>
+                <!-- 頁面主機（切換頁面內容） -->
+                <ContentControl x:Name="PageHost" />
+
+                <!-- 共用 Overlay（在所有頁面上方，Z-Order 由低到高） -->
+                <controls:OverlayDialog x:Name="DialogOverlay" />
+                <controls:LoginOverlay x:Name="LoginOverlayHost" />
+                <controls:ChangePasswordOverlay x:Name="ChangePasswordOverlayHost" />
+                <controls:UsbFormatConfirmOverlay x:Name="UsbFormatConfirmHost" />
+                <controls:UsbDriveSelector x:Name="UsbDriveSelectorHost" />
+                <!-- LockScreen 必須在最上方：鎖定時遮蔽所有面板，解鎖後自動恢復 -->
+                <controls:LockScreenOverlay x:Name="LockScreenHost" />
+            </Grid>
+        </Border>
+    </Viewbox>
+</Window>
