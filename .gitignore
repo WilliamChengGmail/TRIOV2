@@ -393,3 +393,6 @@ tmp/
 # SQLite WAL 模式暫存檔（App 執行中自動產生，關閉後消失）
 *.db-shm
 *.db-wal
+
+# Agent 規劃檔與導覽檔
+docs/agent/
