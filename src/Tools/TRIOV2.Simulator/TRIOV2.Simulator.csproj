@@ -4,9 +4,14 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
-    <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
     <AssemblyName>TRIOV2.Simulator</AssemblyName>
+    <RootNamespace>TRIOV2.Simulator</RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\TRIOV2.Core\TRIOV2.Core.csproj" />
+  </ItemGroup>
 
 </Project>
