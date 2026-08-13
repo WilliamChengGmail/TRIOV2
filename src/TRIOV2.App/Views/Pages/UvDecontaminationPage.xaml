@@ -117,28 +117,30 @@
                         </Ellipse.Style>
                     </Ellipse>
 
-                    <!-- 底圈背景 -->
-                    <Ellipse Width="100" Height="100">
+                    <!-- 底圈背景 (基礎顏色) -->
+                    <Ellipse Width="100" Height="100" Fill="{DynamicResource BorderDarkBrush}"/>
+
+                    <!-- 底圈背景 (啟動時的高亮顏色，透過 Opacity 動畫控制) -->
+                    <Ellipse Width="100" Height="100" Fill="#2D1B69" Opacity="0">
                         <Ellipse.Style>
                             <Style TargetType="Ellipse">
-                                <Setter Property="Fill" Value="{DynamicResource BorderDarkBrush}"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsRunning}" Value="True">
                                         <DataTrigger.EnterActions>
                                             <BeginStoryboard>
                                                 <Storyboard>
-                                                    <ColorAnimation
-                                                        Storyboard.TargetProperty="(Ellipse.Fill).(SolidColorBrush.Color)"
-                                                        To="#2D1B69" Duration="0:0:0.4"/>
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetProperty="Opacity"
+                                                        To="1" Duration="0:0:0.4"/>
                                                 </Storyboard>
                                             </BeginStoryboard>
                                         </DataTrigger.EnterActions>
                                         <DataTrigger.ExitActions>
                                             <BeginStoryboard>
                                                 <Storyboard>
-                                                    <ColorAnimation
-                                                        Storyboard.TargetProperty="(Ellipse.Fill).(SolidColorBrush.Color)"
-                                                        To="{DynamicResource BorderDarkBrush}" Duration="0:0:0.3"/>
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetProperty="Opacity"
+                                                        To="0" Duration="0:0:0.3"/>
                                                 </Storyboard>
                                             </BeginStoryboard>
                                         </DataTrigger.ExitActions>

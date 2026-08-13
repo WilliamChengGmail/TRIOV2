@@ -126,14 +126,17 @@ public partial class App : Application
         var splashStartTime = DateTime.UtcNow;
         if (simArgs.Embedded)
         {
-            // 模擬器嵌入模式：設定面板尺寸並置中顯示（不使用 off-screen 定位）
-            // DevLauncher 會偵測到此視窗並用 SetParent 嵌入面板
+            // 模擬器嵌入模式：初始位置設於離屏，避免在螢幕中央閃現 Splash 視窗
+            // DevLauncher 會偵測到此視窗 Handle 並用 SetParent 嵌入容器中
             splashWindow.WindowState = WindowState.Normal;
+            splashWindow.WindowStyle = WindowStyle.None;
             splashWindow.Topmost = false;
             splashWindow.ShowInTaskbar = false;
+            splashWindow.WindowStartupLocation = WindowStartupLocation.Manual;
+            splashWindow.Left = -10000;
+            splashWindow.Top = -10000;
             if (simArgs.Width > 0) splashWindow.Width = simArgs.Width;
             if (simArgs.Height > 0) splashWindow.Height = simArgs.Height;
-            splashWindow.WindowStartupLocation = WindowStartupLocation.CenterScreen;
         }
         else if (simArgs.Width > 0 && simArgs.Height > 0 && !simArgs.Fullscreen)
         {
@@ -487,7 +490,7 @@ public partial class App : Application
             dir = parent.FullName;
         }
         // 回退: 使用 D:\TRIO2026（開發環境硬編碼）
-        return @"D:\TRIO2026";
+        return @"d:\TRIOV2";
     }
 
     // ── 模擬器參數結構 ──

@@ -2,9 +2,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
+using Microsoft.Win32;
 using WpfTextBox = System.Windows.Controls.TextBox;
 using WpfComboBoxItem = System.Windows.Controls.ComboBoxItem;
 using MessageBox = System.Windows.MessageBox;
@@ -76,19 +78,27 @@ public partial class LauncherWindow : Window
     [StructLayout(LayoutKind.Sequential)]
     private struct RECT { public int Left, Top, Right, Bottom; }
 
-    // === 狀態 ===
+    // === 狀態變數 ===
     private Process? _appProcess;
     private IntPtr _appWindowHandle = IntPtr.Zero;
-    private int _simWidth = 600;
-    private int _simHeight = 960;
+    private string? _customAppExePath;
+
+    private int _simWidth = 1920;
+    private int _simHeight = 1080;
     private double _scaleFactor = 1.0;
     private readonly DispatcherTimer _embedTimer = new();
 
-    // 面板尺寸（公分），最小安全值
-    private double _panelWidthCm = 9.5;    // 機台面板實際寬度
-    private double _panelHeightCm = 15.0;   // 機台面板實際高度
-    private const double MinPanelWidthCm = 9.0;
-    private const double MinPanelHeightCm = 9.0;
+    // 預設面板尺寸 (15.6 吋 16:9 物理尺寸)
+    private double _panelDiagonalInch = 15.6;
+    private double _panelWidthCm = 34.5;
+    private double _panelHeightCm = 19.4;
+    private const double MinPanelWidthCm = 5.0;
+    private const double MinPanelHeightCm = 5.0;
+
+    // 當前開發機螢幕參數 (校準用)
+    private double _devMonitorInch = 27.0;
+    private int _devMonitorResW = 2560;
+    private int _devMonitorResH = 1440;
 
     // 螢幕真實物理像素密度（pixels per cm）
     private double _realPixelsPerCmX = 96.0 / 2.54;  // 預設 96 DPI
@@ -96,15 +106,15 @@ public partial class LauncherWindow : Window
     private double _wpfScaleX = 1.0; // WPF DPI 縮放
 
     // 工具列 + 狀態列高度估算
-    private const double ToolbarHeight = 90;  // 兩行工具列
-    private const double StatusBarHeight = 30;
-    private const double ChromeHeight = 38; // 視窗標題列
+    private const double ToolbarHeight = 135;
+    private const double StatusBarHeight = 32;
+    private const double ChromeHeight = 38;
 
     // Win32 嵌入容器
     private readonly System.Windows.Forms.Panel _hostPanel = new()
     {
         Dock = System.Windows.Forms.DockStyle.Fill,
-        BackColor = System.Drawing.Color.FromArgb(17, 24, 39) // #111827
+        BackColor = System.Drawing.Color.FromArgb(17, 24, 39)
     };
 
     public LauncherWindow()
@@ -114,16 +124,25 @@ public partial class LauncherWindow : Window
         // 將 WinForms Panel 放入 WindowsFormsHost
         WfHost.Child = _hostPanel;
 
-        _embedTimer.Interval = TimeSpan.FromMilliseconds(50);  // 縮短輪詢間隔，加速嵌入
+        _embedTimer.Interval = TimeSpan.FromMilliseconds(50);
         _embedTimer.Tick += EmbedTimer_Tick;
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        // 偵測螢幕真實物理尺寸
+        // 1. 自動偵測開發機螢幕
         DetectRealScreenSize();
 
-        // 套用初始解析度
+        // 2. 依預設開發機螢幕參數精算 PPI
+        RecalculateDevMonitorPpi();
+
+        // 3. 嘗試尋找預設 App.exe
+        UpdateAppExeStatus();
+
+        // 4. 套用初始吋數與長寬計算
+        UpdatePanelDimensionFromInch();
+
+        // 5. 刷新解析度與視窗佈局
         ApplyResolution();
     }
 
@@ -132,74 +151,234 @@ public partial class LauncherWindow : Window
         KillAppProcess();
     }
 
-    /// <summary>解析度下拉選單變更</summary>
-    private void Resolution_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    /// <summary>依據當前開發機輸入的螢幕吋數與解析度精算真實 PPI</summary>
+    private void RecalculateDevMonitorPpi()
     {
-        // XAML 初始化時 ComboBox 會觸發此事件，但 UI 元素尚未建立
+        if (DevMonitorInchBox == null || DevMonitorResWBox == null || DevMonitorResHBox == null) return;
+
+        if (double.TryParse(DevMonitorInchBox.Text, out var inch) &&
+            int.TryParse(DevMonitorResWBox.Text, out var resW) &&
+            int.TryParse(DevMonitorResHBox.Text, out var resH) &&
+            inch > 0 && resW > 0 && resH > 0)
+        {
+            _devMonitorInch = inch;
+            _devMonitorResW = resW;
+            _devMonitorResH = resH;
+
+            var aspect = (double)resW / resH;
+            var diagMm = inch * 25.4; // 1 inch = 25.4 mm
+
+            var widthMm = Math.Sqrt((diagMm * diagMm) / (1.0 + (1.0 / (aspect * aspect))));
+            var heightMm = widthMm / aspect;
+
+            _realPixelsPerCmX = resW / (widthMm / 10.0);
+            _realPixelsPerCmY = resH / (heightMm / 10.0);
+
+            var ppi = _realPixelsPerCmX * 2.54;
+            if (DevPpiText != null)
+            {
+                DevPpiText.Text = $"計算 PPI: {ppi:F1}";
+            }
+
+            var physWcm = widthMm / 10.0;
+            var physHcm = heightMm / 10.0;
+            DevScreenInfo.Text = $"當前開發機: {resW}×{resH} | {physWcm:F1}×{physHcm:F1} cm ({inch:F1}\") | PPI: {ppi:F0}";
+        }
+    }
+
+    /// <summary>點擊套用開發機螢幕設定</summary>
+    private void ApplyDevMonitor_Click(object sender, RoutedEventArgs e)
+    {
+        RecalculateDevMonitorPpi();
+        ApplyResolution();
+    }
+
+    /// <summary>自動偵測開發機螢幕 EDID</summary>
+    private void AutoDetectDevMonitor_Click(object sender, RoutedEventArgs e)
+    {
+        DetectRealScreenSize();
+        ApplyResolution();
+    }
+
+    /// <summary>自動搜尋或更新 App.exe 狀態</summary>
+    private void UpdateAppExeStatus()
+    {
+        var appExe = FindAppExe();
+        if (appExe != null)
+        {
+            AppPathText.Text = $"目標 App: {Path.GetFileName(appExe)} ({appExe})";
+            AppPathText.Foreground = new System.Windows.Media.SolidColorBrush(
+                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#81D4FA"));
+        }
+        else
+        {
+            AppPathText.Text = "⚠ 找不到 TRIOV2.App.exe，請點擊「選擇 App...」指明路徑";
+            AppPathText.Foreground = new System.Windows.Media.SolidColorBrush(
+                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF8A80"));
+        }
+    }
+
+    /// <summary>選擇可執行檔按鈕</summary>
+    private void BrowseApp_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Filter = "可執行檔 (*.exe)|*.exe",
+            Title = "選擇 TRIOV2.App.exe 檔案"
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            _customAppExePath = dialog.FileName;
+            UpdateAppExeStatus();
+        }
+    }
+
+    /// <summary>解析度下拉選單變更</summary>
+    private void Resolution_Changed(object sender, SelectionChangedEventArgs e)
+    {
         if (!IsLoaded) return;
 
-        if (ResolutionCombo.SelectedItem is System.Windows.Controls.ComboBoxItem item && item.Tag is string tag)
+        if (ResolutionCombo.SelectedItem is ComboBoxItem item && item.Tag is string tag)
         {
             var parts = tag.Split(',');
             if (parts.Length == 2 && int.TryParse(parts[0], out var w) && int.TryParse(parts[1], out var h))
             {
                 _simWidth = w;
                 _simHeight = h;
+                UpdatePanelDimensionFromInch();
                 ApplyResolution();
             }
         }
     }
 
-    /// <summary>根據選擇的解析度計算模擬器容器大小</summary>
+    /// <summary>吋數下拉選擇事件</summary>
+    private void InchCombo_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded) return;
+
+        if (InchCombo.SelectedItem is ComboBoxItem item && item.Tag is string tag)
+        {
+            if (double.TryParse(tag, out var inch))
+            {
+                _panelDiagonalInch = inch;
+                UpdatePanelDimensionFromInch();
+                ApplyResolution();
+            }
+        }
+    }
+
+    /// <summary>依據吋數 (Diagonal Inch) 與目前比例算物理長寬 (cm)</summary>
+    private void UpdatePanelDimensionFromInch()
+    {
+        if (_panelDiagonalInch <= 0) return;
+
+        // 特殊預設集精確設定：10.1 吋標準觸控面板 (物理寬 21.8cm × 物理高 13.7cm)
+        if (Math.Abs(_panelDiagonalInch - 10.1) < 0.05)
+        {
+            _panelWidthCm = 21.8;
+            _panelHeightCm = 13.7;
+        }
+        else
+        {
+            var aspect = (double)_simWidth / _simHeight;
+            var diagMm = _panelDiagonalInch * 25.4; // 1 inch = 25.4 mm
+
+            var widthMm = Math.Sqrt((diagMm * diagMm) / (1.0 + (1.0 / (aspect * aspect))));
+            var heightMm = widthMm / aspect;
+
+            _panelWidthCm = Math.Round(widthMm / 10.0, 1);
+            _panelHeightCm = Math.Round(heightMm / 10.0, 1);
+        }
+
+        PanelWidthBox.Text = _panelWidthCm.ToString("F1");
+        PanelHeightBox.Text = _panelHeightCm.ToString("F1");
+    }
+
+    /// <summary>勾選 1:1 實物物理尺寸切換</summary>
+    private void Real1To1_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        ApplyResolution();
+    }
+
+    /// <summary>計算並套用模擬器畫面與視窗尺寸</summary>
     private void ApplyResolution()
     {
-        // 直接用選擇的解析度作為 WPF 邏輯像素（= 機台上 App 看到的像素數）
-        var panelWpfW = (double)_simWidth;
-        var panelWpfH = (double)_simHeight;
+        double displayW;
+        double displayH;
 
-        // 計算可用的最大螢幕空間（扣除 Taskbar 安全邊距）
-        var maxW = SystemParameters.WorkArea.Width - 40;
-        var maxH = SystemParameters.WorkArea.Height - 40;
-        var contentMaxW = maxW;
-        var contentMaxH = maxH - ToolbarHeight - StatusBarHeight - ChromeHeight;
+        bool isReal1To1 = Real1To1Check?.IsChecked == true;
 
-        // 若解析度超過開發機螢幕，等比縮小
-        _scaleFactor = Math.Min(
-            contentMaxW / panelWpfW,
-            contentMaxH / panelWpfH);
-        if (_scaleFactor > 1.0) _scaleFactor = 1.0;
+        if (isReal1To1)
+        {
+            // 模式 1：1:1 精準毫米實物物理大小
+            // 使用開發者顯示器的真實 pixels-per-cm 轉換為像素
+            var physPixelW = _panelWidthCm * _realPixelsPerCmX;
+            var physPixelH = _panelHeightCm * _realPixelsPerCmY;
 
-        var displayW = panelWpfW * _scaleFactor;
-        var displayH = panelWpfH * _scaleFactor;
+            // 轉換為 WPF 邏輯 Dip
+            displayW = physPixelW / _wpfScaleX;
+            displayH = physPixelH / _wpfScaleX;
 
-        // 設定螢幕容器大小
+            var maxW = SystemParameters.WorkArea.Width - 40;
+            var maxH = SystemParameters.WorkArea.Height - ToolbarHeight - StatusBarHeight - ChromeHeight - 40;
+
+            if (displayW > maxW || displayH > maxH)
+            {
+                _scaleFactor = Math.Min(maxW / displayW, maxH / displayH);
+                displayW *= _scaleFactor;
+                displayH *= _scaleFactor;
+            }
+            else
+            {
+                _scaleFactor = 1.0;
+            }
+        }
+        else
+        {
+            // 模式 2：比例展現適應
+            var panelWpfW = (double)_simWidth;
+            var panelWpfH = (double)_simHeight;
+
+            var maxW = SystemParameters.WorkArea.Width - 60;
+            var maxH = SystemParameters.WorkArea.Height - ToolbarHeight - StatusBarHeight - ChromeHeight - 60;
+
+            _scaleFactor = Math.Min(maxW / panelWpfW, maxH / panelWpfH);
+            if (_scaleFactor > 1.0) _scaleFactor = 1.0;
+
+            displayW = panelWpfW * _scaleFactor;
+            displayH = panelWpfH * _scaleFactor;
+        }
+
+        // 設定容器尺寸
         ScreenContainer.Width = displayW;
         ScreenContainer.Height = displayH;
 
-        // 更新 UI 顯示
-        var scaleInfo = _scaleFactor < 1.0 ? $" (⚠ 超出螢幕，縮放 {_scaleFactor * 100:F0}%)" : "";
-        SimResText.Text = $"解析度: {_simWidth}×{_simHeight} | 面板: {_panelWidthCm:F1}×{_panelHeightCm:F1} cm{scaleInfo}";
-        ScaleText.Text = $"{_scaleFactor * 100:F0}%";
+        // 更新 UI 提示文字
+        var scaleInfo = _scaleFactor < 1.0 ? $" (視窗縮放 {_scaleFactor * 100:F0}%)" : "";
+        SimResText.Text = $"模擬解析度: {_simWidth} × {_simHeight} | 物理面板: {_panelWidthCm:F1} × {_panelHeightCm:F1} cm ({_panelDiagonalInch:F1}\"){scaleInfo}";
+        ScaleText.Text = isReal1To1 ? $"1:1 實物 ({_scaleFactor * 100:F0}%)" : $"{_scaleFactor * 100:F0}%";
 
-        // 調整視窗大小
+        // 調整外層主視窗大小
         SizeToContent = SizeToContent.Manual;
-        Width = displayW + 24;
-        Height = displayH + ToolbarHeight + StatusBarHeight + ChromeHeight + 12;
+        Width = Math.Max(820, displayW + 36);
+        Height = displayH + ToolbarHeight + StatusBarHeight + ChromeHeight + 24;
 
-        // 重新置中
+        // 置中
         Left = (SystemParameters.WorkArea.Width - Width) / 2;
         Top = (SystemParameters.WorkArea.Height - Height) / 2;
 
-        // 如果 App 已嵌入，重新調整子視窗大小
+        // 若 App 已嵌入，調整子視窗尺寸
         if (_appWindowHandle != IntPtr.Zero)
         {
-            MoveWindow(_appWindowHandle, 0, 0, (int)displayW, (int)displayH, true);
+            MoveWindow(_appWindowHandle, 0, 0, (int)(displayW * _wpfScaleX), (int)(displayH * _wpfScaleX), true);
         }
 
-        StatusText.Text = $"模擬: {_simWidth}×{_simHeight} | 面板: {_panelWidthCm:F1}×{_panelHeightCm:F1} cm | 真實 PPI: {_realPixelsPerCmX * 2.54:F1} | 縮放: {_scaleFactor * 100:F0}%";
+        StatusText.Text = $"模擬: {_simWidth}×{_simHeight} | 面板: {_panelWidthCm:F1}×{_panelHeightCm:F1} cm ({_panelDiagonalInch:F1}\") | 當前 PPI: {_realPixelsPerCmX * 2.54:F0}";
     }
 
-    /// <summary>偵測螢幕真實物理尺寸，計算真實 pixels-per-cm</summary>
+    /// <summary>偵測開發者螢幕真實物理 PPI</summary>
     private void DetectRealScreenSize()
     {
         try
@@ -211,94 +390,85 @@ public partial class LauncherWindow : Window
             var pixelHeight = GetDeviceCaps(hdc, VERTRES);    // 像素高
             ReleaseDC(IntPtr.Zero, hdc);
 
-            if (physWidthMm > 0 && physHeightMm > 0)
-            {
-                // 真實 pixels per cm
-                _realPixelsPerCmX = pixelWidth / (physWidthMm / 10.0);
-                _realPixelsPerCmY = pixelHeight / (physHeightMm / 10.0);
-            }
-
-            // WPF DPI 縮放
             var src = PresentationSource.FromVisual(this);
             if (src?.CompositionTarget != null)
                 _wpfScaleX = src.CompositionTarget.TransformToDevice.M11;
 
-            var physWcm = physWidthMm / 10.0;
-            var physHcm = physHeightMm / 10.0;
-            var diagInch = Math.Sqrt(physWcm * physWcm + physHcm * physHcm) / 2.54;
-            var hasTouch = Tablet.TabletDevices.Count > 0;
+            if (DevMonitorResWBox != null) DevMonitorResWBox.Text = pixelWidth.ToString();
+            if (DevMonitorResHBox != null) DevMonitorResHBox.Text = pixelHeight.ToString();
 
-            DevScreenInfo.Text = $"開發機: {pixelWidth}×{pixelHeight} | {physWcm:F1}×{physHcm:F1} cm ({diagInch:F1}\") | PPI: {_realPixelsPerCmX * 2.54:F0} | 觸控: {(hasTouch ? "✅" : "❌")}";
+            if (physWidthMm > 0 && physHeightMm > 0)
+            {
+                _realPixelsPerCmX = pixelWidth / (physWidthMm / 10.0);
+                _realPixelsPerCmY = pixelHeight / (physHeightMm / 10.0);
+
+                var physWcm = physWidthMm / 10.0;
+                var physHcm = physHeightMm / 10.0;
+                var diagInch = Math.Round(Math.Sqrt(physWcm * physWcm + physHcm * physHcm) / 2.54, 1);
+                if (DevMonitorInchBox != null) DevMonitorInchBox.Text = diagInch.ToString("F1");
+            }
         }
         catch
         {
-            DevScreenInfo.Text = "開發機: 無法偵測螢幕資訊";
+            if (DevMonitorInchBox != null) DevMonitorInchBox.Text = "27.0";
+            if (DevMonitorResWBox != null) DevMonitorResWBox.Text = "2560";
+            if (DevMonitorResHBox != null) DevMonitorResHBox.Text = "1440";
         }
     }
 
-    /// <summary>面板尺寸文字變更（即時驗證）</summary>
-    private void PanelSize_Changed(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    private void PanelSize_Changed(object sender, TextChangedEventArgs e)
     {
-        // 僅做即時文字顏色回饋，不自動套用
         if (!IsLoaded) return;
-
         if (sender is WpfTextBox tb)
         {
-            if (double.TryParse(tb.Text, out _))
-                tb.Foreground = new System.Windows.Media.SolidColorBrush(
-                    System.Windows.Media.Colors.White);
-            else
-                tb.Foreground = new System.Windows.Media.SolidColorBrush(
-                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#EF5350"));
+            tb.Foreground = double.TryParse(tb.Text, out _)
+                ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.White)
+                : new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#EF5350"));
         }
     }
 
-    /// <summary>套用按鈕：讀取面板尺寸並更新模擬器</summary>
     private void ApplySize_Click(object sender, RoutedEventArgs e)
     {
         if (!double.TryParse(PanelWidthBox.Text, out var w) || !double.TryParse(PanelHeightBox.Text, out var h))
         {
-            MessageBox.Show("請輸入有效的數值（例: 52.0）", "輸入錯誤", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("請輸入有效的數值（例: 34.5）", "輸入錯誤", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        // 強制最小安全值
         if (w < MinPanelWidthCm) { w = MinPanelWidthCm; PanelWidthBox.Text = w.ToString("F1"); }
         if (h < MinPanelHeightCm) { h = MinPanelHeightCm; PanelHeightBox.Text = h.ToString("F1"); }
 
         _panelWidthCm = w;
         _panelHeightCm = h;
+
+        // 計算物理對角線吋數
+        _panelDiagonalInch = Math.Round(Math.Sqrt(w * w + h * h) / 2.54, 1);
         ApplyResolution();
     }
 
-    /// <summary>截圖整個模擬器視窗（使用 Win32 擷取，包含嵌入子視窗）</summary>
     private void Screenshot_Click(object sender, RoutedEventArgs e)
     {
         try
         {
-            var dir = @"D:\TRIO2026\tools\Screenshots";
+            var dir = @"d:\TRIOV2\Tools\Screenshots";
             if (!Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
 
-            // 取得視窗在螢幕上的位置與大小
             var helper = new WindowInteropHelper(this);
             GetWindowRect(helper.Handle, out var rect);
             var w = rect.Right - rect.Left;
             var h = rect.Bottom - rect.Top;
 
-            // 用 BitBlt 從螢幕擷取（包含嵌入的子視窗）
             var hdcScreen = GetDC(IntPtr.Zero);
             var hdcMem = CreateCompatibleDC(hdcScreen);
             var hBitmap = CreateCompatibleBitmap(hdcScreen, w, h);
             var hOld = SelectObject(hdcMem, hBitmap);
 
             BitBlt(hdcMem, 0, 0, w, h, hdcScreen, rect.Left, rect.Top, SRCCOPY);
-
             SelectObject(hdcMem, hOld);
 
-            // 轉為 BitmapSource 並儲存
             var bmpSrc = System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(
-                hBitmap, IntPtr.Zero, System.Windows.Int32Rect.Empty,
+                hBitmap, IntPtr.Zero, Int32Rect.Empty,
                 System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions());
 
             var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
@@ -309,12 +479,11 @@ public partial class LauncherWindow : Window
             using (var fs = new FileStream(filepath, FileMode.Create))
                 encoder.Save(fs);
 
-            // 清理
             DeleteObject(hBitmap);
             DeleteDC(hdcMem);
             ReleaseDC(IntPtr.Zero, hdcScreen);
 
-            StatusText.Text = $"📷 截圖已儲存: {filename}";
+            StatusText.Text = $"📷 截圖已儲存至: {filepath}";
         }
         catch (Exception ex)
         {
@@ -322,29 +491,26 @@ public partial class LauncherWindow : Window
         }
     }
 
-    /// <summary>啟動 TRIO2026.App</summary>
+    /// <summary>啟動 TRIOV2.App</summary>
     private void Run_Click(object sender, RoutedEventArgs e)
     {
         var appExe = FindAppExe();
         if (appExe == null)
         {
             MessageBox.Show(
-                "找不到 TRIO2026.App.exe\n\n請先在 VS 中建置 TRIO2026.App 專案。",
+                "找不到 TRIOV2.App.exe！\n\n請確認專案已順利建置，或點擊「選擇 App...」指定可執行檔位置。",
                 "找不到應用程式", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
         try
         {
-            // 切換顯示：隱藏佔位文字，顯示嵌入容器
             PlaceholderGrid.Visibility = Visibility.Collapsed;
             WfHost.Visibility = Visibility.Visible;
 
-            // 使用 ScreenContainer 的 WPF 邏輯像素尺寸（已完成佈局，數值可靠）
             var logicalW = (int)ScreenContainer.ActualWidth;
             var logicalH = (int)ScreenContainer.ActualHeight;
 
-            // 啟動 App（傳入 WPF 邏輯像素尺寸 — App 用這個設定 Window.Width/Height）
             var psi = new ProcessStartInfo
             {
                 FileName = appExe,
@@ -354,14 +520,13 @@ public partial class LauncherWindow : Window
             };
 
             _appProcess = Process.Start(psi);
-
-            // 啟動定時器等待視窗出現後嵌入
             _embedTimer.Start();
 
             RunButton.IsEnabled = false;
             StopButton.IsEnabled = true;
             ResolutionCombo.IsEnabled = false;
-            StatusText.Text = "正在啟動 TRIO2026.App ...";
+            InchCombo.IsEnabled = false;
+            StatusText.Text = $"正在啟動 {Path.GetFileName(appExe)} ...";
         }
         catch (Exception ex)
         {
@@ -371,7 +536,6 @@ public partial class LauncherWindow : Window
         }
     }
 
-    /// <summary>定時檢查 App 視窗是否出現，出現後嵌入</summary>
     private void EmbedTimer_Tick(object? sender, EventArgs e)
     {
         if (_appProcess == null || _appProcess.HasExited)
@@ -381,39 +545,38 @@ public partial class LauncherWindow : Window
             return;
         }
 
-        // 嘗試取得主視窗 Handle
         _appProcess.Refresh();
         var hWnd = _appProcess.MainWindowHandle;
 
-        if (hWnd == IntPtr.Zero) return;  // 視窗還沒出現，繼續等
+        if (hWnd == IntPtr.Zero) return;
 
         _embedTimer.Stop();
         _appWindowHandle = hWnd;
 
-        // 使用 WinForms Panel 的 Handle 作為父視窗（限制在模擬區域內）
-        var containerHwnd = _hostPanel.Handle;
+        // 1. 立即隱藏原生視窗，防止在中央移動過程中閃爍
+        ShowWindow(hWnd, 0 /* SW_HIDE */);
 
-        // 移除 App 視窗的標題列和邊框
+        var containerHwnd = _hostPanel.Handle;
         var style = GetWindowLong(hWnd, GWL_STYLE);
         SetWindowLong(hWnd, GWL_STYLE, (style & ~0x00C00000 & ~0x00040000) | WS_CHILD);
 
-        // 設定父視窗為 Panel（不是整個視窗）
+        // 2. 設置父容器為 DevLauncher 的 Panel
         SetParent(hWnd, containerHwnd);
 
-        // 調整大小填滿 Panel（MoveWindow 使用裝置像素）
+        // 3. 調整尺寸與位置
         var displayW = (int)(ScreenContainer.ActualWidth * _wpfScaleX);
         var displayH = (int)(ScreenContainer.ActualHeight * _wpfScaleX);
         MoveWindow(hWnd, 0, 0, displayW, displayH, true);
+
+        // 4. 完美顯示於 DevLauncher 模擬器容器內
         ShowWindow(hWnd, SW_SHOW);
 
-        StatusText.Text = $"✅ TRIO2026.App 運行中 — {(int)ScreenContainer.ActualWidth}×{(int)ScreenContainer.ActualHeight} (面板 {_panelWidthCm}×{_panelHeightCm} cm)";
+        StatusText.Text = $"✅ TRIOV2.App 運行中 — 面板 {_panelDiagonalInch:F1}\" ({_panelWidthCm}×{_panelHeightCm} cm)";
 
-        // 監控 App 是否退出
         _appProcess.EnableRaisingEvents = true;
         _appProcess.Exited += (s, args) => Dispatcher.Invoke(OnAppExited);
     }
 
-    /// <summary>停止 App</summary>
     private void Stop_Click(object sender, RoutedEventArgs e)
     {
         KillAppProcess();
@@ -438,24 +601,27 @@ public partial class LauncherWindow : Window
         RunButton.IsEnabled = true;
         StopButton.IsEnabled = false;
         ResolutionCombo.IsEnabled = true;
+        InchCombo.IsEnabled = true;
         StatusText.Text = "已停止";
     }
 
-    /// <summary>搜尋 TRIO2026.App.exe 位置</summary>
-    private static string? FindAppExe()
+    /// <summary>搜尋 TRIOV2.App.exe 位置</summary>
+    private string? FindAppExe()
     {
+        if (!string.IsNullOrEmpty(_customAppExePath) && File.Exists(_customAppExePath))
+            return _customAppExePath;
+
         var dir = AppDomain.CurrentDomain.BaseDirectory;
         for (int i = 0; i < 8; i++)
         {
             var candidates = new[]
             {
-                Path.Combine(dir, "App", "TRIOV2.App.exe"),
                 Path.Combine(dir, "src", "TRIOV2.App", "bin", "Debug", "net8.0-windows", "TRIOV2.App.exe"),
                 Path.Combine(dir, "src", "TRIOV2.App", "bin", "Release", "net8.0-windows", "TRIOV2.App.exe"),
-                Path.Combine(dir, "App", "TRIO2026.App.exe"), // Fallback
-                Path.Combine(dir, "src", "TRIO2026.App", "bin", "Debug", "net8.0-windows", "TRIO2026.App.exe"),
-                Path.Combine(dir, "src", "TRIO2026.App", "bin", "Release", "net8.0-windows", "TRIO2026.App.exe"),
+                Path.Combine(dir, "App", "TRIOV2.App.exe"),
+                Path.Combine(dir, "publish", "TRIOV2.App.exe"),
             };
+
             foreach (var c in candidates)
                 if (File.Exists(c)) return c;
 
@@ -463,6 +629,7 @@ public partial class LauncherWindow : Window
             if (parent == null) break;
             dir = parent.FullName;
         }
+
         return null;
     }
 }

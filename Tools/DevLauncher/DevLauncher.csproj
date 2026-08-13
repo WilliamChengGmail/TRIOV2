@@ -7,8 +7,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <AssemblyName>TRIO2026.DevLauncher</AssemblyName>
-    <RootNamespace>TRIO2026.DevLauncher</RootNamespace>
+    <AssemblyName>TRIOV2.DevLauncher</AssemblyName>
+    <RootNamespace>TRIOV2.DevLauncher</RootNamespace>
   </PropertyGroup>
 
 </Project>
