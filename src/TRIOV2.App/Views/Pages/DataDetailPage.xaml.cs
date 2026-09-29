@@ -308,10 +308,10 @@ public partial class DataDetailPage : UserControl
         {
             Child = grid,
             Padding = new Thickness(16, 8, 8, 8),
-            BorderBrush = (SolidColorBrush)FindResource("DividerBrush"),
+            BorderBrush = (TryFindResource("DividerBrush") as Brush) ?? (TryFindResource("BorderLightBrush") as Brush) ?? Brushes.Gray,
             BorderThickness = new Thickness(0, 0, 0, isHeader ? 1 : 0),
             Background = isHeader
-                ? new SolidColorBrush(Color.FromArgb(0x30, 0x1A, 0x2D, 0x4C))
+                ? ((TryFindResource("CardBackgroundAltBrush") as Brush) ?? Brushes.Transparent)
                 : Brushes.Transparent
         };
     }

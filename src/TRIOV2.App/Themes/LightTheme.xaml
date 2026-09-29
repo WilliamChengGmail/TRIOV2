@@ -67,6 +67,7 @@
     <!-- 邊框與控制項筆刷 -->
     <SolidColorBrush x:Key="BorderLightBrush" Color="{StaticResource BorderLight}" />
     <SolidColorBrush x:Key="BorderDarkBrush" Color="{StaticResource BorderDark}" />
+    <SolidColorBrush x:Key="DividerBrush" Color="{StaticResource BorderLight}" />
     <SolidColorBrush x:Key="ControlHoverBrush" Color="{StaticResource ControlHover}" />
     
     <!-- 原本某些元件直接使用的特定名稱為了相容可以保留 -->

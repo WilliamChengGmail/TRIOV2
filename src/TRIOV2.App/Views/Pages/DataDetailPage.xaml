@@ -13,7 +13,8 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="{StaticResource SectionHeaderBg}"
+                        <Border x:Name="Bd" Background="{DynamicResource CardBackgroundAltBrush}"
+                                BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="1"
                                 CornerRadius="10" Padding="16,14" Margin="0,6"
                                 MinHeight="56">
                             <ContentPresenter />
@@ -89,7 +90,7 @@
         </Grid.RowDefinitions>
 
         <!-- ═══ 頂部列 ═══ -->
-        <Border Grid.Row="0" Background="#15203A" BorderBrush="#1E3050" BorderThickness="0,0,0,1">
+        <Border Grid.Row="0" Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="0,0,0,1">
             <Grid Margin="10,0,16,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>  <!-- 返回 -->
@@ -123,11 +124,11 @@
                 Click="OnDownloadClick" />
 
         <!-- ═══ 底部狀態列 ═══ -->
-        <Border Grid.Row="3" Background="#0C1524">
+        <Border Grid.Row="3" Background="{DynamicResource PanelBackgroundBrush}">
             <Grid Margin="16,0">
                 <TextBlock x:Name="TxtStatus"
                            FontSize="13" FontFamily="Segoe UI"
-                           Foreground="#546E7A" VerticalAlignment="Center" HorizontalAlignment="Left" />
+                           Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" HorizontalAlignment="Left" />
                 <TextBlock x:Name="CountdownText"
                            FontSize="13" FontFamily="Segoe UI"
                            Foreground="{DynamicResource AccentTealBrush}" VerticalAlignment="Center" HorizontalAlignment="Center"

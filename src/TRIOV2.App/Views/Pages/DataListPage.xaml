@@ -290,7 +290,7 @@
         </Grid.RowDefinitions>
 
         <!-- ═══ 頂部列 ═══ -->
-        <Border Grid.Row="0" Background="#15203A" BorderBrush="#1E3050" BorderThickness="0,0,0,1">
+        <Border Grid.Row="0" Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="0,0,0,1">
             <Grid Margin="16,0,200,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>   <!-- 標題 -->
@@ -327,8 +327,8 @@
 
         <!-- ═══ 篩選列（Admin 專屬的快速切換 + 進階篩選指示）═══ -->
         <Border x:Name="AdminFilterBar" Grid.Row="1"
-                Background="#15203A" Padding="12,6"
-                BorderBrush="#1E3050" BorderThickness="0,0,0,1"
+                Background="{DynamicResource PanelBackgroundBrush}" Padding="12,6"
+                BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="0,0,0,1"
                 Visibility="Collapsed">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -383,18 +383,18 @@
 
         <!-- ═══ 底部下載列（多選模式） ═══ -->
         <Border x:Name="DownloadBar" Grid.Row="3"
-                Background="#15203A" BorderBrush="#1E3050" BorderThickness="0,1,0,0"
+                Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="0,1,0,0"
                 Visibility="Collapsed">
             <Button x:Name="BtnDownload" Style="{StaticResource DownloadButton}"
                     Click="OnDownloadClick" />
         </Border>
 
         <!-- ═══ 底部狀態列 ═══ -->
-        <Border Grid.Row="4" Background="#0C1524">
+        <Border Grid.Row="4" Background="{DynamicResource PanelBackgroundBrush}">
             <Grid Margin="16,0">
                 <TextBlock x:Name="TxtRecordCount"
                            FontSize="13" FontFamily="Segoe UI"
-                           Foreground="#37474F" VerticalAlignment="Center" HorizontalAlignment="Left" />
+                           Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" HorizontalAlignment="Left" />
                 <TextBlock x:Name="CountdownText"
                            FontSize="13" FontFamily="Segoe UI"
                            Foreground="{DynamicResource AccentTealBrush}" VerticalAlignment="Center" HorizontalAlignment="Center"
