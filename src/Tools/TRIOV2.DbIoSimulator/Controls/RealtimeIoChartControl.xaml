@@ -1,0 +1,59 @@
+<UserControl x:Class="TRIOV2.DbIoSimulator.Controls.RealtimeIoChartControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="170" d:DesignWidth="600">
+    <Border Background="#1A1A1A" BorderBrush="#2C2C2C" BorderThickness="1" CornerRadius="6" Padding="10">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- 圖表標題與雙曲線即時讀數 -->
+            <Grid Grid.Row="0" Margin="0,0,0,6">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="SQLite I/O 吞吐波形" Foreground="#E0E0E0" FontSize="13" FontWeight="SemiBold"/>
+                    <TextBlock Text=" — 過去 60 秒" Foreground="#888888" FontSize="11" Margin="6,1,0,0"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Ellipse Width="8" Height="8" Fill="#00BCD4" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="寫入:" Foreground="#AAAAAA" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TxtWriteVal" Text="0.0 op/s" Foreground="#00BCD4" FontFamily="Consolas"
+                               FontSize="13" FontWeight="Bold" Margin="0,0,14,0" VerticalAlignment="Center"/>
+
+                    <Ellipse Width="8" Height="8" Fill="#FFC107" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="讀取:" Foreground="#AAAAAA" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TxtReadVal" Text="0.0 op/s" Foreground="#FFC107" FontFamily="Consolas"
+                               FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- 圖表繪製區域 -->
+            <Grid Grid.Row="1" x:Name="ChartGrid" ClipToBounds="True">
+                <Canvas x:Name="GridCanvas" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+
+                <!-- 寫入面積與主折線 (Cyan) -->
+                <Path x:Name="WriteAreaPath"/>
+                <Path x:Name="WriteLinePath" Stroke="#00BCD4" StrokeThickness="2.0"
+                      StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+
+                <!-- 讀取折線 (Amber 虛線) -->
+                <Path x:Name="ReadLinePath" Stroke="#FFC107" StrokeThickness="1.4"
+                      StrokeDashArray="3,2" StrokeLineJoin="Round"/>
+
+                <!-- 動態 Y 軸刻度文字 (右側) -->
+                <TextBlock x:Name="TxtMaxScale" Text="50 op/s" Foreground="#666666" FontFamily="Consolas" FontSize="10"
+                           HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,4,0"/>
+                <TextBlock x:Name="TxtMidScale" Text="25 op/s" Foreground="#666666" FontFamily="Consolas" FontSize="10"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                <TextBlock Text="0" Foreground="#666666" FontFamily="Consolas" FontSize="10"
+                           HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,4,2"/>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>
+

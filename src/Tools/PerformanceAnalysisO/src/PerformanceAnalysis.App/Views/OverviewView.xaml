@@ -1,0 +1,164 @@
+<UserControl x:Class="PerformanceAnalysis.App.Views.OverviewView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="clr-namespace:PerformanceAnalysis.App.Controls"
+             xmlns:sp="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
+             mc:Ignorable="d"
+             d:DesignHeight="800"
+             d:DesignWidth="1100">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <UniformGrid Grid.Row="0" Columns="4" Margin="16,16,16,12">
+            <controls:KpiCard Title="檢測場次"
+                              Value="{Binding SessionCountText}"
+                              Detail="{Binding SessionDetailText}"
+                              Accent="{StaticResource PrimaryBlueBrush}"
+                              Margin="0,0,8,0" />
+            <controls:KpiCard Title="裝置數量"
+                              Value="{Binding DeviceCountText}"
+                              Detail="{Binding DeviceDetailText}"
+                              Accent="{StaticResource AccentTealBrush}"
+                              Margin="0,0,8,0" />
+            <controls:KpiCard Title="任務種類"
+                              Value="{Binding TaskCountText}"
+                              Detail="{Binding TaskDetailText}"
+                              Accent="{StaticResource SuccessGreenBrush}"
+                              Margin="0,0,8,0" />
+            <controls:KpiCard Title="需要注意"
+                              Value="{Binding WarningCountText}"
+                              Detail="{Binding WarningDetailText}"
+                              Accent="{StaticResource WarningYellowBrush}" />
+        </UniformGrid>
+
+        <Border Grid.Row="1"
+                Background="{StaticResource CardBackgroundBrush}"
+                BorderBrush="{StaticResource BorderDarkBrush}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Margin="16,0,16,12"
+                Padding="14,10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid>
+                    <TextBlock Text="歷次測試 CPU 趨勢" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="依開始時間排序"
+                               Style="{StaticResource MutedText}"
+                               HorizontalAlignment="Right"
+                               VerticalAlignment="Center" />
+                </Grid>
+                <sp:WpfPlot x:Name="TrendPlot" Grid.Row="1" Height="190" Margin="0,8,0,0" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2"
+                Background="{StaticResource CardBackgroundBrush}"
+                BorderBrush="{StaticResource BorderDarkBrush}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Margin="16,0,16,16">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Grid Margin="14,12,14,4">
+                    <TextBlock Text="檢測紀錄" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="{Binding SourcePath}"
+                               Style="{StaticResource MutedText}"
+                               HorizontalAlignment="Right"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"
+                               MaxWidth="620" />
+                </Grid>
+
+                <TabControl Grid.Row="1" Margin="8,0,8,8">
+                    <TabItem Header="列表">
+                        <DataGrid x:Name="SessionGrid"
+                                  ItemsSource="{Binding Sessions}"
+                                  MouseDoubleClick="SessionGrid_MouseDoubleClick"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="資料夾" Binding="{Binding FolderName}" Width="140" />
+                                <DataGridTextColumn Header="裝置" Binding="{Binding DeviceDisplay}" Width="145" />
+                                <DataGridTextColumn Header="開始時間" Binding="{Binding StartTimeText}" Width="112" />
+                                <DataGridTextColumn Header="時長" Binding="{Binding DurationText}" Width="56" />
+                                <DataGridTextColumn Header="CPU 平均" Binding="{Binding CpuAverageText}" Width="64" />
+                                <DataGridTextColumn Header="CPU 最高" Binding="{Binding CpuMaxText}" Width="64" />
+                                <DataGridTemplateColumn Header="ΔCPU" Width="62">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding CpuDeltaText}"
+                                                       Foreground="{Binding CpuDeltaBrush}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="RAM 平均" Binding="{Binding RamAverageText}" Width="72" />
+                                <DataGridTextColumn Header="RAM 最高" Binding="{Binding RamMaxText}" Width="72" />
+                                <DataGridTemplateColumn Header="ΔRAM" Width="72">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding RamDeltaText}"
+                                                       Foreground="{Binding RamDeltaBrush}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="任務" Binding="{Binding TaskCount}" Width="44" />
+                                <DataGridTextColumn Header="警告" Binding="{Binding WarningText}" Width="44" />
+                                <DataGridTemplateColumn Header="基準" Width="46">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding BaselineMarker}"
+                                                       HorizontalAlignment="Center"
+                                                       FontSize="14">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsBaseline}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource WarningYellowBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="" Width="64">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Content="開啟"
+                                                    Style="{StaticResource GhostButton}"
+                                                    Padding="8,2"
+                                                    Command="{Binding DataContext.OpenSessionCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                    CommandParameter="{Binding}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </TabItem>
+
+                    <TabItem Header="任務覆蓋矩陣">
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Auto">
+                            <controls:TaskCoverageMatrix Rows="{Binding CoverageRows}"
+                                                         Tasks="{Binding TaskCatalog}" />
+                        </ScrollViewer>
+                    </TabItem>
+                </TabControl>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

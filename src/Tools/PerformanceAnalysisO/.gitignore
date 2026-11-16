@@ -1,0 +1,9 @@
+bin/
+obj/
+out/
+publish/
+Metadata/
+.vs/
+TestResults/
+*.user
+*.suo

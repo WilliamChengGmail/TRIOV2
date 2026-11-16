@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <link rel="icon" href="data:,">
+    <title>{{TITLE}}</title>
+    <style>{{CSS}}</style>
+</head>
+<body>
+    <div class="app">
+        <header class="header">
+            <div class="brand">
+                <div class="logo" aria-hidden="true"></div>
+                <div class="brand-text">
+                    <h1>{{TITLE}}</h1>
+                    <p>產生時間 {{GENERATED_AT}} ・ 來源 <span id="source-path" class="mono"></span></p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <label class="field">
+                    <span>裝置</span>
+                    <select id="device-select" aria-label="選擇裝置"></select>
+                </label>
+                <button id="theme-btn" class="btn ghost" type="button">深色</button>
+                <button id="print-btn" class="btn primary" type="button">列印 / PDF</button>
+            </div>
+        </header>
+
+        <nav class="tabs" id="tabs" aria-label="報告頁面">
+            <button type="button" data-view="overview">總覽</button>
+            <button type="button" data-view="session">單場次</button>
+            <button type="button" data-view="compare">場次比較</button>
+        </nav>
+
+        <main id="main"></main>
+
+        <footer class="footer">
+            TRIOV2 效能分析 ・ 單一 HTML 報告 ・ 圖表 Apache ECharts（Apache-2.0） ・ 無外部連線
+        </footer>
+    </div>
+
+    <script id="report-data" type="application/json">{{DATA}}</script>
+    <script>{{ECHARTS}}</script>
+    <script>{{APP_JS}}</script>
+</body>
+</html>

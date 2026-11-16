@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>TRIOV2.PerformanceAnalyzer</AssemblyName>
+    <RootNamespace>TRIOV2.PerformanceAnalyzer</RootNamespace>
+    <ApplicationTitle>TRIO V2 硬體效能數據分析器</ApplicationTitle>
+  </PropertyGroup>
+
+</Project>
+

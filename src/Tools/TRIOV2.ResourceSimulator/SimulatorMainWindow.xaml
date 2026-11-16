@@ -1,0 +1,828 @@
+<Window x:Class="TRIOV2.ResourceSimulator.SimulatorMainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:controls="clr-namespace:TRIOV2.ResourceSimulator.Controls"
+        xmlns:vm="clr-namespace:TRIOV2.ResourceSimulator.ViewModels"
+        mc:Ignorable="d"
+        Title="TRIO V2 PC效能資源模擬器"
+        Height="940" Width="1220"
+        MinHeight="820" MinWidth="1100"
+        Background="#121212"
+        Foreground="#EEEEEE"
+        Topmost="{Binding IsAlwaysOnTop}"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.DataContext>
+        <vm:SimulatorViewModel/>
+    </Window.DataContext>
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- 深色卡片樣式 -->
+        <Style x:Key="CardBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="#1C1C1C"/>
+            <Setter Property="BorderBrush" Value="#2A2A2A"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="12"/>
+        </Style>
+
+        <!-- 滑桿樣式微調 -->
+        <Style TargetType="Slider">
+            <Setter Property="Foreground" Value="#00BCF9"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- 自訂按鈕樣式 -->
+        <Style x:Key="ModernBtn" TargetType="Button">
+            <Setter Property="Background" Value="#2A2A2A"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#3D3D3D"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#383838"/>
+                    <Setter Property="BorderBrush" Value="#00BCF9"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#007ACC"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.4"/>
+                    <Setter Property="Cursor" Value="No"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 醒目單次拍圖按鈕 -->
+        <Style x:Key="AccentActionBtn" TargetType="Button" BasedOn="{StaticResource ModernBtn}">
+            <Setter Property="Background" Value="#0078D4"/>
+            <Setter Property="BorderBrush" Value="#0090FF"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1084E3"/>
+                    <Setter Property="BorderBrush" Value="#40B0FF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 開始紀錄按鈕 (紅底) -->
+        <Style x:Key="RecordStartBtn" TargetType="Button" BasedOn="{StaticResource ModernBtn}">
+            <Setter Property="Background" Value="#A82828"/>
+            <Setter Property="BorderBrush" Value="#D63030"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#C23232"/>
+                    <Setter Property="BorderBrush" Value="#FF5555"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 停止紀錄按鈕 -->
+        <Style x:Key="RecordStopBtn" TargetType="Button" BasedOn="{StaticResource ModernBtn}">
+            <Setter Property="Background" Value="#333333"/>
+            <Setter Property="BorderBrush" Value="#555555"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#444444"/>
+                    <Setter Property="BorderBrush" Value="#777777"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- RadioButton 樣式 -->
+        <Style TargetType="RadioButton">
+            <Setter Property="Foreground" Value="#DDDDDD"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="0,0,16,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <!-- DataGrid 深色主題樣式 -->
+        <Style x:Key="TaskGridStyle" TargetType="DataGrid">
+            <Setter Property="Background" Value="#181818"/>
+            <Setter Property="Foreground" Value="#EEEEEE"/>
+            <Setter Property="BorderBrush" Value="#2A2A2A"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="RowBackground" Value="#181818"/>
+            <Setter Property="AlternatingRowBackground" Value="#1E1E1E"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#262626"/>
+            <Setter Property="VerticalGridLinesBrush" Value="#262626"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="RowHeight" Value="25"/>
+            <Setter Property="SelectionMode" Value="Single"/>
+            <Setter Property="SelectionUnit" Value="FullRow"/>
+        </Style>
+
+        <!-- DataGridColumnHeader 樣式 (支援點擊欄位排序高亮) -->
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#252525"/>
+            <Setter Property="Foreground" Value="#CCCCCC"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="BorderBrush" Value="#333333"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#323232"/>
+                    <Setter Property="Foreground" Value="#00BCF9"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="DataGridCell">
+            <Setter Property="Padding" Value="4,2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#004C87"/>
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 任務清單追蹤核取方塊樣式 (深色主題，Disable 時呈現明顯純灰階鎖定效果) -->
+        <Style x:Key="TaskTrackCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="CheckBoxHost" Background="Transparent" Padding="4,2">
+                            <Border x:Name="BoxBorder"
+                                    Width="16" Height="16"
+                                    CornerRadius="3"
+                                    Background="#222222"
+                                    BorderBrush="#6E6E6E"
+                                    BorderThickness="1.5"
+                                    SnapsToDevicePixels="True">
+                                <Path x:Name="CheckMark"
+                                      Width="12" Height="12"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Data="M 1.8,6.2 L 4.8,9.2 L 10.2,2.8"
+                                      Stroke="#FFFFFF"
+                                      StrokeThickness="2"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"
+                                      Visibility="Collapsed"/>
+                            </Border>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <!-- 已勾選 (啟用狀態) -->
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="BoxBorder" Property="Background" Value="#0078D4"/>
+                                <Setter TargetName="BoxBorder" Property="BorderBrush" Value="#00BCF9"/>
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <!-- 滑鼠懸停 (僅在啟用時) -->
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                    <Condition Property="IsEnabled" Value="True"/>
+                                    <Condition Property="IsChecked" Value="False"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="BoxBorder" Property="BorderBrush" Value="#00BCF9"/>
+                                <Setter TargetName="BoxBorder" Property="Background" Value="#28343C"/>
+                            </MultiTrigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                    <Condition Property="IsEnabled" Value="True"/>
+                                    <Condition Property="IsChecked" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="BoxBorder" Property="Background" Value="#1084E3"/>
+                                <Setter TargetName="BoxBorder" Property="BorderBrush" Value="#4DD0FF"/>
+                            </MultiTrigger>
+                            <!-- 停用狀態：未勾選 (純灰階暗化) -->
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsEnabled" Value="False"/>
+                                    <Condition Property="IsChecked" Value="False"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="BoxBorder" Property="Background" Value="#242424"/>
+                                <Setter TargetName="BoxBorder" Property="BorderBrush" Value="#454545"/>
+                                <Setter TargetName="CheckBoxHost" Property="Opacity" Value="0.45"/>
+                            </MultiTrigger>
+                            <!-- 停用狀態：已勾選 (移除主題藍飽和度，轉為純灰階鎖定外觀) -->
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsEnabled" Value="False"/>
+                                    <Condition Property="IsChecked" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="BoxBorder" Property="Background" Value="#4A4A4A"/>
+                                <Setter TargetName="BoxBorder" Property="BorderBrush" Value="#606060"/>
+                                <Setter TargetName="CheckMark" Property="Stroke" Value="#9E9E9E"/>
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="CheckBoxHost" Property="Opacity" Value="0.58"/>
+                            </MultiTrigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Cursor" Value="No"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <!-- 頂部標題列 -->
+            <RowDefinition Height="Auto"/>
+            <!-- 中央效能圖表與指標 (Task Manager 風格) -->
+            <RowDefinition Height="*"/>
+            <!-- 底部操控與模式面板 -->
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ═══════════════ 頂部標題列 ═══════════════ -->
+        <Grid Grid.Row="0" Margin="0,0,0,12">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="🧬" FontSize="20" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBlock Text="TRIO V2 PC效能資源模擬器" FontSize="18" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
+                <TextBlock Text="v2.5 (微軟工作管理員行程監視與多任務採樣)" FontSize="12" Foreground="#888888" VerticalAlignment="Center" Margin="10,4,0,0"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <CheckBox Content="📌 視窗置頂 (Always On Top)" IsChecked="{Binding IsAlwaysOnTop}"
+                          Foreground="#AAAAAA" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- ═══════════════ 中央圖表與即時指標 ═══════════════ -->
+        <Grid Grid.Row="1" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="330"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 左側：指標數據卡片與區間紀錄卡片 (即時反映當前處理器與記憶體使用量) -->
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,0,14,0">
+                <StackPanel>
+                    <!-- CPU 卡片 -->
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,10">
+                        <StackPanel>
+                            <TextBlock Text="處理器 (CPU)" Foreground="#00BCF9" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding TotalCpuText}" FontSize="28" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,2,0,6"/>
+
+                            <Separator Background="#2A2A2A" Margin="0,0,0,6"/>
+
+                            <Grid Margin="0,2">
+                                <TextBlock Text="模擬器產出負載" Foreground="#888888" FontSize="11"/>
+                                <TextBlock Text="{Binding SimulatorCpuText}" Foreground="#00BCF9" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Right"/>
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <TextBlock Text="系統剩餘可用 (Idle)" Foreground="#888888" FontSize="11"/>
+                                <TextBlock Text="{Binding RemainingCpuText}" Foreground="#2ECC71" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 記憶體卡片 -->
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,10">
+                        <StackPanel>
+                            <TextBlock Text="記憶體 (RAM)" Foreground="#9B59B6" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding UsedMemoryText}" FontSize="28" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,2,0,2"/>
+                            <TextBlock Foreground="#AAAAAA" FontSize="11" Margin="0,0,0,6">
+                                <Run Text="總量: "/><Run Text="{Binding TotalMemoryText, Mode=OneWay}" FontWeight="SemiBold"/><Run Text=" ("/><Run Text="{Binding MemoryUsagePercentText, Mode=OneWay}"/><Run Text=")"/>
+                            </TextBlock>
+
+                            <Separator Background="#2A2A2A" Margin="0,0,0,6"/>
+
+                            <Grid Margin="0,2">
+                                <TextBlock Text="系統可用記憶體" Foreground="#888888" FontSize="11"/>
+                                <TextBlock Text="{Binding AvailableMemoryText}" Foreground="#2ECC71" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Right"/>
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <TextBlock Text="模擬影像緩衝 (WorkingSet)" Foreground="#888888" FontSize="11"/>
+                                <TextBlock Text="{Binding SimulatorMemoryText}" Foreground="#9B59B6" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 區間效能量測統計卡片 -->
+                    <Border Style="{StaticResource CardBorderStyle}" BorderBrush="#0078D4" Margin="0,0,0,10">
+                        <StackPanel>
+                            <!-- 標題與計時 -->
+                            <Grid Margin="0,0,0,8">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="📊 區間效能量測統計" Foreground="#FFFFFF" FontSize="13" FontWeight="Bold"/>
+                                </StackPanel>
+                                <TextBlock Text="{Binding RecordingDurationText}" Foreground="#00BCF9" FontWeight="Bold" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <!-- 操作按鈕列 -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Button Grid.Column="0" Style="{StaticResource RecordStartBtn}" Content="🔴 開始紀錄"
+                                        Command="{Binding StartRecordingCommand}" Margin="0,0,4,0"/>
+                                <Button Grid.Column="1" Style="{StaticResource RecordStopBtn}" Content="⏹ 停止紀錄"
+                                        Command="{Binding StopRecordingCommand}" Margin="0,0,4,0"/>
+                                <Button Grid.Column="2" Style="{StaticResource ModernBtn}" Content="📋 複製"
+                                        Command="{Binding CopyRecordSummaryCommand}" ToolTip="複製統計摘要至剪貼簿並輸出 ref.txt"/>
+                            </Grid>
+
+                            <!-- 狀態徽章 -->
+                            <TextBlock Text="{Binding RecordingStatusBadge}" Foreground="#AAAAAA" FontSize="11" Margin="0,0,0,8" TextTrimming="CharacterEllipsis"/>
+
+                            <Separator Background="#2A2A2A" Margin="0,0,0,6"/>
+
+                            <!-- 統計數據表格 -->
+                            <!-- 表頭 -->
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="50"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="項目" Foreground="#777777" FontSize="10"/>
+                                <TextBlock Grid.Column="1" Text="最高 (Max)" Foreground="#FF6B6B" FontSize="10" HorizontalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="最低 (Min)" Foreground="#4DABF7" FontSize="10" HorizontalAlignment="Center"/>
+                                <TextBlock Grid.Column="3" Text="平均 (Avg)" Foreground="#51CF66" FontSize="10" HorizontalAlignment="Right"/>
+                            </Grid>
+
+                            <!-- CPU 列 -->
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="50"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="CPU" Foreground="#00BCF9" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding RecordedCpuMaxText}" Foreground="#FFFFFF" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding RecordedCpuMinText}" Foreground="#FFFFFF" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="3" Text="{Binding RecordedCpuAvgText}" Foreground="#51CF66" FontWeight="Bold" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <!-- RAM 列 -->
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="50"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="RAM" Foreground="#9B59B6" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding RecordedMemMaxText}" Foreground="#FFFFFF" FontWeight="SemiBold" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding RecordedMemMinText}" Foreground="#FFFFFF" FontWeight="SemiBold" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="3" Text="{Binding RecordedMemAvgText}" Foreground="#51CF66" FontWeight="Bold" FontSize="10" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <!-- 日誌檔案操作列 -->
+                            <Separator Background="#2A2A2A" Margin="0,6,0,6"/>
+                            <Grid Margin="0,0,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{Binding LastLogFileName, StringFormat='Log: {0}'}"
+                                           Foreground="#888888" FontSize="10" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" ToolTip="{Binding LastLogFilePath}"/>
+                                <Button Grid.Column="1" Style="{StaticResource ModernBtn}" Content="📄 查看"
+                                        Command="{Binding OpenLogFileCommand}" Margin="4,0,4,0" ToolTip="直接開啟 CSV 日誌"
+                                        Padding="6,3" FontSize="10"/>
+                                <Button Grid.Column="2" Style="{StaticResource ModernBtn}" Content="📂 目錄"
+                                        Command="{Binding OpenLogFolderCommand}" ToolTip="開啟 Log 儲存資料夾"
+                                        Padding="6,3" FontSize="10"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 狀態指示列 -->
+                    <Border Style="{StaticResource CardBorderStyle}">
+                        <StackPanel>
+                            <TextBlock Text="目前底層模擬狀態" Foreground="#888888" FontSize="11" Margin="0,0,0,2"/>
+                            <TextBlock Text="{Binding StatusText}" Foreground="#FFFFFF" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ═══════════════ 右側：三等分區域 (CPU 圖表 / RAM 圖表 / 工作管理員清單) ═══════════════ -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <!-- 上塊：CPU 波形圖 -->
+                    <RowDefinition Height="1.1*" MinHeight="130"/>
+                    <!-- 中塊：記憶體波形圖 -->
+                    <RowDefinition Height="1.1*" MinHeight="130"/>
+                    <!-- 下塊：工作管理員行程清單 -->
+                    <RowDefinition Height="1.8*" MinHeight="220"/>
+                </Grid.RowDefinitions>
+
+                <!-- 上塊：處理器波形圖 -->
+                <controls:RealtimeChartControl x:Name="CpuChart" Grid.Row="0" Margin="0,0,0,8"
+                                               Title="處理器使用率 (CPU %)" ThemeColor="#00BCF9"/>
+
+                <!-- 中塊：實體記憶體波形圖 -->
+                <controls:RealtimeChartControl x:Name="MemoryChart" Grid.Row="1" Margin="0,0,0,8"
+                                               Title="實體記憶體使用量 (RAM %)" ThemeColor="#9B59B6"/>
+
+                <!-- 下塊：微軟工作管理員風格行程清單 (支援手動輸入/匯入額外 Task Name 監控) -->
+                <Border Grid.Row="2" Style="{StaticResource CardBorderStyle}" Padding="8">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <!-- 頂部搜尋與全選工具列 -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- 額外自訂/匯入任務列 -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- 行程 DataGrid -->
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- 第一列：標題、搜尋與全選/刷新控制 -->
+                        <Grid Grid.Row="0" Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="📋 當前帳號行程監視" Foreground="#FFFFFF" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding SelectedProcessCountText}" Foreground="#00BCF9" FontSize="11" FontWeight="SemiBold"
+                                           VerticalAlignment="Center" Margin="10,0,0,0"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                <!-- 搜尋文字框 -->
+                                <Border Background="#252525" BorderBrush="#3D3D3D" BorderThickness="1" CornerRadius="4" Padding="4,2" Margin="0,0,6,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🔍" Foreground="#777777" FontSize="10" VerticalAlignment="Center" Margin="2,0,4,0"/>
+                                        <TextBox Text="{Binding ProcessSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                                 Width="110" Background="Transparent" Foreground="#FFFFFF" BorderThickness="0"
+                                                 FontSize="11" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Button Style="{StaticResource ModernBtn}" Content="☑ 全選"
+                                        Command="{Binding SelectAllProcessesCommand}" Padding="6,2" FontSize="11" Margin="0,0,4,0"
+                                        ToolTip="全選目前顯示的所有行程 (紀錄中鎖定)"/>
+                                <Button Style="{StaticResource ModernBtn}" Content="☐ 取消"
+                                        Command="{Binding DeselectAllProcessesCommand}" Padding="6,2" FontSize="11" Margin="0,0,4,0"
+                                        ToolTip="取消所有勾選 (紀錄中鎖定)"/>
+                                <Button Style="{StaticResource ModernBtn}" Content="🔄 刷新"
+                                        Command="{Binding RefreshProcessesCommand}" Padding="6,2" FontSize="11"
+                                        ToolTip="重新掃描當前使用者行程"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- 第二列：手動新增與檔案匯入/範例下載工具列 -->
+                        <Border Grid.Row="1" Background="#162129" BorderBrush="#263E4D" BorderThickness="1" CornerRadius="5" Padding="6,4" Margin="0,0,0,6">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0" Text="額外監控:" Foreground="#8AD4F5" FontSize="11" FontWeight="SemiBold"
+                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
+
+                                <!-- 手動輸入框 + 加入按鈕 -->
+                                <Grid Grid.Column="1" Margin="0,0,8,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0" Background="#12181E" BorderBrush="#344B5A" BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="0,0,4,0">
+                                        <Grid>
+                                            <TextBlock Text="輸入 Task Name (逗號分隔可多筆，含尚未執行任務)"
+                                                       Foreground="#667B8A" FontSize="11" VerticalAlignment="Center"
+                                                       IsHitTestVisible="False">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding ManualTaskNameInput}" Value="">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBox Text="{Binding ManualTaskNameInput, UpdateSourceTrigger=PropertyChanged}"
+                                                     IsEnabled="{Binding CanChangeProcessSelection}"
+                                                     Background="Transparent" Foreground="#FFFFFF" BorderThickness="0" CaretBrush="#00BCF9"
+                                                     FontSize="11" VerticalAlignment="Center"
+                                                     ToolTip="輸入一個或多個處理程序名稱 (如 TRIOV2.App, notepad)，按下 Enter 或點擊加入">
+                                                <TextBox.InputBindings>
+                                                    <KeyBinding Key="Return" Command="{Binding AddManualTaskCommand}"/>
+                                                </TextBox.InputBindings>
+                                            </TextBox>
+                                        </Grid>
+                                    </Border>
+
+                                    <Button Grid.Column="1" Style="{StaticResource ModernBtn}" Content="➕ 加入"
+                                            Command="{Binding AddManualTaskCommand}" Padding="8,3" FontSize="11"
+                                            ToolTip="將輸入的 Task Name 加入額外追蹤清單 (支援多筆逗號分隔)"/>
+                                </Grid>
+
+                                <!-- 匯入清單 / 下載範例 / 清除自訂 -->
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Style="{StaticResource ModernBtn}" Content="📥 匯入清單"
+                                            Command="{Binding ImportTaskListCommand}" Padding="7,3" FontSize="11" Margin="0,0,4,0"
+                                            ToolTip="從 CSV 或 TXT 匯入一到多個要監控的 Task Name (含尚未執行任務)"/>
+                                    <Button Style="{StaticResource ModernBtn}" Content="📄 下載範例"
+                                            Command="{Binding DownloadSampleTasksCommand}" Padding="7,3" FontSize="11" Margin="0,0,4,0"
+                                            ToolTip="下載標準 Task Name 匯入範例檔 (含填入格式說明)"/>
+                                    <Button Style="{StaticResource ModernBtn}" Content="🗑 清除自訂"
+                                            Command="{Binding ClearCustomTasksCommand}" Padding="7,3" FontSize="11"
+                                            ToolTip="移除所有手動輸入與匯入的額外監控任務"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- 行程表格 (DataGrid: 支援點選欄位排序、禁止紀錄中勾選、每秒原地更新不閃爍空白) -->
+                        <DataGrid Grid.Row="2" Style="{StaticResource TaskGridStyle}"
+                                  ItemsSource="{Binding ProcessView}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  CanUserResizeRows="False"
+                                  CanUserSortColumns="True"
+                                  IsReadOnly="True"
+                                  EnableRowVirtualization="True"
+                                  VirtualizingPanel.IsVirtualizing="True"
+                                  VirtualizingPanel.VirtualizationMode="Recycling">
+                            <DataGrid.Columns>
+                                <!-- 勾選欄 (作為啟動紀錄追蹤項目，開始紀錄後自動 Disabled 並呈現灰階鎖定效果，停止後恢復 Enabled) -->
+                                <DataGridTemplateColumn Header="追蹤" Width="44" SortMemberPath="IsSelected">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <CheckBox Style="{StaticResource TaskTrackCheckBoxStyle}"
+                                                      IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"
+                                                      IsEnabled="{Binding DataContext.CanChangeProcessSelection, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <!-- 名稱 (自訂/匯入目標顯示專屬徽章，可單獨點擊 × 移出) -->
+                                <DataGridTemplateColumn Header="名稱" Width="155" SortMemberPath="ProcessName">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <DockPanel VerticalAlignment="Center" LastChildFill="True">
+                                                <Button DockPanel.Dock="Right" Content="✕"
+                                                        Command="{Binding DataContext.RemoveCustomTaskCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding ProcessName}"
+                                                        Visibility="{Binding IsCustomTarget, Converter={StaticResource BoolToVis}}"
+                                                        IsEnabled="{Binding DataContext.CanChangeProcessSelection, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        Background="Transparent" Foreground="#888888" BorderThickness="0"
+                                                        Padding="4,0" FontSize="10" Cursor="Hand"
+                                                        ToolTip="從自訂監控名單中移除此項目"/>
+                                                <Border DockPanel.Dock="Left"
+                                                        Background="#1B4F6E" BorderBrush="#00BCF9" BorderThickness="1" CornerRadius="3"
+                                                        Padding="4,0" Margin="0,0,5,0" VerticalAlignment="Center"
+                                                        Visibility="{Binding IsCustomTarget, Converter={StaticResource BoolToVis}}">
+                                                    <TextBlock Text="自訂" Foreground="#8CE0FF" FontSize="9" FontWeight="Bold"/>
+                                                </Border>
+                                                <TextBlock Text="{Binding ProcessName}" FontWeight="SemiBold" Foreground="#FFFFFF"
+                                                           TextTrimming="CharacterEllipsis" ToolTip="{Binding DisplayName}"
+                                                           VerticalAlignment="Center"/>
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <!-- PID (數值排序，尚未執行顯示 "—") -->
+                                <DataGridTextColumn Header="PID" Binding="{Binding ProcessIdText}" Width="52" SortMemberPath="ProcessId">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#888888"/>
+                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+
+                                <!-- 狀態 (依執行/尚未執行/沒有回應自動著色) -->
+                                <DataGridTextColumn Header="狀態" Binding="{Binding StatusText}" Width="72" SortMemberPath="StatusText">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#2ECC71"/>
+                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding StatusText}" Value="尚未執行">
+                                                    <Setter Property="Foreground" Value="#FFC107"/>
+                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding StatusText}" Value="沒有回應">
+                                                    <Setter Property="Foreground" Value="#FF6B6B"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+
+                                <!-- CPU (數值排序) -->
+                                <DataGridTextColumn Header="CPU" Binding="{Binding CpuPercentText}" Width="70" SortMemberPath="CpuPercent">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#00BCF9"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+
+                                <!-- 記憶體 (數值排序) -->
+                                <DataGridTextColumn Header="記憶體" Binding="{Binding MemoryText}" Width="85" SortMemberPath="MemoryMb">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#9B59B6"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+
+                                <!-- 磁碟 (數值排序) -->
+                                <DataGridTextColumn Header="磁碟" Binding="{Binding DiskIoText}" Width="85" SortMemberPath="DiskIoKbPerSec">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#CCCCCC"/>
+                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+
+                                <!-- 網路 (數值排序) -->
+                                <DataGridTextColumn Header="網路" Binding="{Binding NetworkText}" Width="75" SortMemberPath="NetworkKbps">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#CCCCCC"/>
+                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+
+                                <!-- 電源用量 -->
+                                <DataGridTextColumn Header="電源用量" Binding="{Binding PowerUsage}" Width="75" SortMemberPath="PowerUsage">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#DDDDDD"/>
+                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+
+                                <!-- 電源用量趨勢 -->
+                                <DataGridTextColumn Header="電源用量趨勢" Binding="{Binding PowerTrend}" Width="85" SortMemberPath="PowerTrend">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#AAAAAA"/>
+                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- ═══════════════ 底部操作與參數微調面板 ═══════════════ -->
+        <Border Grid.Row="2" Style="{StaticResource CardBorderStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- 第一行：模式選擇與觸發按鈕 -->
+                <Grid Grid.Row="0" Margin="0,0,0,10">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="運作模式：" Foreground="#AAAAAA" FontSize="13" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <RadioButton Content="單次拍圖辨識 (Single-Shot)" IsChecked="{Binding IsSingleShotMode}"/>
+                        <RadioButton Content="週期連續排程 (Periodic)" IsChecked="{Binding IsPeriodicMode}"/>
+                        <RadioButton Content="極限連續高壓 (Continuous)" IsChecked="{Binding IsContinuousMode}"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <!-- 單次拍照專用按鈕 -->
+                        <Button Style="{StaticResource AccentActionBtn}" Content="📸 模擬拍圖並執行辨識"
+                                Command="{Binding TriggerSingleShotCommand}"
+                                Padding="16,6" Margin="0,0,8,0"/>
+
+                        <!-- 週期/連續模式啟動與停止 -->
+                        <Button Style="{StaticResource ModernBtn}" Content="▶ 啟動排程"
+                                Command="{Binding StartPeriodicCommand}"
+                                Margin="0,0,6,0"/>
+                        <Button Style="{StaticResource ModernBtn}" Content="⏹ 停止"
+                                Command="{Binding StopCommand}"/>
+                    </StackPanel>
+                </Grid>
+
+                <Separator Grid.Row="1" Background="#262626" Margin="0,0,0,10"/>
+
+                <!-- 第二行：動態調節滑桿與快速預設 -->
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="1.5*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- CPU 滑桿 -->
+                    <StackPanel Grid.Column="0" Margin="0,0,14,0">
+                        <Grid Margin="0,0,0,4">
+                            <TextBlock Text="CPU 目標佔用" Foreground="#CCCCCC" FontSize="12"/>
+                            <TextBlock Text="{Binding TargetCpuPercent, StringFormat='{}{0:0} %'}"
+                                       Foreground="#00BCF9" FontWeight="Bold" FontSize="12" HorizontalAlignment="Right"/>
+                        </Grid>
+                        <Slider Minimum="1" Maximum="100" Value="{Binding TargetCpuPercent, Mode=TwoWay}"
+                                SmallChange="1" LargeChange="5" TickFrequency="10" IsSnapToTickEnabled="False"/>
+                    </StackPanel>
+
+                    <!-- 記憶體滑桿 -->
+                    <StackPanel Grid.Column="1" Margin="0,0,14,0">
+                        <Grid Margin="0,0,0,4">
+                            <TextBlock Text="影像緩衝記憶體" Foreground="#CCCCCC" FontSize="12"/>
+                            <TextBlock Text="{Binding TargetMemoryMb, StringFormat='{}{0} MB'}"
+                                       Foreground="#9B59B6" FontWeight="Bold" FontSize="12" HorizontalAlignment="Right"/>
+                        </Grid>
+                        <Slider Minimum="50" Maximum="4096" Value="{Binding TargetMemoryMb, Mode=TwoWay}"
+                                SmallChange="10" LargeChange="100" TickFrequency="256" IsSnapToTickEnabled="False"/>
+                    </StackPanel>
+
+                    <!-- 辨識運算時長 -->
+                    <StackPanel Grid.Column="2" Margin="0,0,14,0">
+                        <Grid Margin="0,0,0,4">
+                            <TextBlock Text="辨識運算時長" Foreground="#CCCCCC" FontSize="12"/>
+                            <TextBlock Text="{Binding InferenceDurationMs, StringFormat='{}{0} ms'}"
+                                       Foreground="#2ECC71" FontWeight="Bold" FontSize="12" HorizontalAlignment="Right"/>
+                        </Grid>
+                        <Slider Minimum="100" Maximum="3000" Value="{Binding InferenceDurationMs, Mode=TwoWay}"
+                                SmallChange="50" LargeChange="200"/>
+                    </StackPanel>
+
+                    <!-- 快速預設情境按鈕組 -->
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Style="{StaticResource ModernBtn}" Content="大陸基準 (15%/270MB)"
+                                Command="{Binding ApplyPresetBaselineCommand}" Margin="0,0,6,0" ToolTip="i7-9700K 15% 基準負載"/>
+                        <Button Style="{StaticResource ModernBtn}" Content="輕量 (8%/100MB)"
+                                Command="{Binding ApplyPresetLowCommand}" Margin="0,0,6,0"/>
+                        <Button Style="{StaticResource ModernBtn}" Content="高壓 (35%/1GB)"
+                                Command="{Binding ApplyPresetHighCommand}"/>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

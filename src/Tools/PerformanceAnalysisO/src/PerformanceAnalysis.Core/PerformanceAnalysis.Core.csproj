@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Reporting\Assets\template.html"
+                      LogicalName="PerformanceAnalysis.Core.Reporting.Assets.template.html" />
+    <EmbeddedResource Include="Reporting\Assets\report.css"
+                      LogicalName="PerformanceAnalysis.Core.Reporting.Assets.report.css" />
+    <EmbeddedResource Include="Reporting\Assets\report.js"
+                      LogicalName="PerformanceAnalysis.Core.Reporting.Assets.report.js" />
+    <EmbeddedResource Include="Reporting\Assets\echarts.min.js"
+                      LogicalName="PerformanceAnalysis.Core.Reporting.Assets.echarts.min.js" />
+  </ItemGroup>
+
+</Project>

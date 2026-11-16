@@ -1,0 +1,800 @@
+<Window x:Class="TRIOV2.PerformanceAnalyzer.Views.AnalyzerMainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:TRIOV2.PerformanceAnalyzer.Controls"
+        xmlns:models="clr-namespace:TRIOV2.PerformanceAnalyzer.Models"
+        Title="TRIO V2 硬體效能數據分析器"
+        Height="900" Width="1380"
+        MinHeight="760" MinWidth="1160"
+        Background="#121212"
+        Foreground="#EEEEEE"
+        AllowDrop="True"
+        Drop="Window_Drop"
+        DragOver="Window_DragOver"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Background" Value="#1C1C1C"/>
+            <Setter Property="BorderBrush" Value="#2C2C32"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="12"/>
+        </Style>
+
+        <Style x:Key="DarkBtn" TargetType="Button">
+            <Setter Property="Background" Value="#27272A"/>
+            <Setter Property="Foreground" Value="#F4F4F5"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="11,5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#323238"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="AccentBtn" TargetType="Button" BasedOn="{StaticResource DarkBtn}">
+            <Setter Property="Background" Value="#0284C7"/>
+            <Setter Property="BorderBrush" Value="#0EA5E9"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#0369A1"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#141416"/>
+            <Setter Property="Foreground" Value="#F4F4F5"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="CaretBrush" Value="#00BCF9"/>
+        </Style>
+
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#E4E4E7"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- 深色 DataGrid 樣式 -->
+        <Style TargetType="DataGrid">
+            <Setter Property="Background" Value="#141416"/>
+            <Setter Property="Foreground" Value="#E4E4E7"/>
+            <Setter Property="BorderBrush" Value="#2C2C32"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="RowBackground" Value="#18181B"/>
+            <Setter Property="AlternatingRowBackground" Value="#1E1E22"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#27272A"/>
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="SelectionMode" Value="Single"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="RowHeaderWidth" Value="0"/>
+            <Setter Property="FontSize" Value="12.5"/>
+        </Style>
+
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#222226"/>
+            <Setter Property="Foreground" Value="#A1A1AA"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="10,7"/>
+            <Setter Property="BorderBrush" Value="#2C2C32"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+        </Style>
+
+        <Style TargetType="DataGridCell">
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#1E3A5F"/>
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 深色 TabItem -->
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="#A1A1AA"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="Bd" Background="#1C1C1F" BorderBrush="#2C2C32" BorderThickness="1"
+                                CornerRadius="6,6,0,0" Padding="14,8" Margin="0,0,4,0" Cursor="Hand">
+                            <ContentPresenter ContentSource="Header"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#0284C7"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#38BDF8"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                    <Condition Property="IsSelected" Value="False"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bd" Property="Background" Value="#27272C"/>
+                                <Setter Property="Foreground" Value="#E4E4E7"/>
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 1. 頂部全域路徑、搜尋與快速控制列 -->
+        <Border Grid.Row="0" Style="{StaticResource CardStyle}" Margin="0,0,0,10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- 上排：標題 + 模式徽章 + 匯出鈕 -->
+                <Grid Grid.Row="0" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Width="10" Height="10" CornerRadius="5" Background="#00BCF9" Margin="0,0,8,0"/>
+                        <TextBlock Text="TRIO V2 硬體效能數據分析器" FontSize="16" FontWeight="Bold" Foreground="#FFFFFF"/>
+                        <Border Background="#164E63" BorderBrush="#0891B2" BorderThickness="1" CornerRadius="5" Padding="9,3" Margin="14,0,0,0">
+                            <TextBlock Text="{Binding ModeBadgeText}" FontSize="12" Foreground="#67E8F9" FontWeight="SemiBold"/>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Content="匯出 HTML 報表" Style="{StaticResource DarkBtn}" Command="{Binding ExportHtmlCommand}" Margin="0,0,6,0"/>
+                        <Button Content="匯出 CSV 總表" Style="{StaticResource DarkBtn}" Command="{Binding ExportCsvCommand}" Margin="0,0,6,0"/>
+                        <Button Content="複製 Markdown" Style="{StaticResource DarkBtn}" Command="{Binding CopyMarkdownCommand}"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- 下排：路徑輸入、瀏覽、上層目錄、篩選 -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="190"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="目標路徑：" VerticalAlignment="Center" Foreground="#A1A1AA" Margin="0,0,6,0"/>
+                    <TextBox Grid.Column="1" Text="{Binding TargetPath, UpdateSourceTrigger=PropertyChanged}"
+                             KeyDown="PathTextBox_KeyDown" VerticalContentAlignment="Center"
+                             ToolTip="可輸入單次測試路徑或跨機彙整總目錄，亦可直接將資料夾拖放進視窗"/>
+                    <Button Grid.Column="2" Content="瀏覽資料夾..." Style="{StaticResource DarkBtn}" Command="{Binding BrowseFolderCommand}" Margin="6,0,0,0"/>
+                    <Button Grid.Column="3" Content="載入分析" Style="{StaticResource AccentBtn}" Command="{Binding ScanPathCommand}" Margin="6,0,0,0"/>
+                    <Button Grid.Column="4" Content="上層目錄" Style="{StaticResource DarkBtn}" Command="{Binding GoUpLevelCommand}" Margin="6,0,0,0"
+                            ToolTip="切換至上一層目錄檢視多次／跨設備彙整紀錄"/>
+
+                    <CheckBox Grid.Column="5" Content="隱藏短於 10 秒測試" IsChecked="{Binding HideShortRuns}" Margin="14,0,10,0"
+                              ToolTip="可一鍵過濾僅誤觸數秒鐘就停止的試跑資料夾，避免拉偏整機平均值"/>
+
+                    <Grid Grid.Column="6">
+                        <TextBox x:Name="SearchBox"
+                                 Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"
+                                 VerticalContentAlignment="Center"
+                                 ToolTip="依裝置名稱、CPU 型號、OS 或任務名稱篩選"/>
+                        <TextBlock Text="搜尋設備 / CPU / 任務"
+                                   IsHitTestVisible="False"
+                                   Foreground="#71717A"
+                                   FontSize="12"
+                                   Margin="10,0,0,0"
+                                   VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- 2. 主工作區：左側設備場次樹 + 右側四大分析分頁 -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="330" MinWidth="260"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 左側設備與測試場次導覽樹 -->
+            <Border Grid.Column="0" Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="設備與場次導覽清單" FontSize="13.5" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Content="全選" Style="{StaticResource DarkBtn}" Padding="8,3" FontSize="11.5" Command="{Binding IncludeAllCommand}" Margin="0,0,4,0"/>
+                            <Button Content="全不選" Style="{StaticResource DarkBtn}" Padding="8,3" FontSize="11.5" Command="{Binding ExcludeAllCommand}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding DeviceGroups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:DeviceAggregateSummary}">
+                                    <Border Background="#151518" BorderBrush="#2C2C32" BorderThickness="1" CornerRadius="6" Padding="9" Margin="0,0,4,8">
+                                        <StackPanel>
+                                            <!-- 設備標頭列 -->
+                                            <Grid Margin="0,0,0,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" FontSize="13" Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding HardwareProfile.ShortCpuLabel}" FontSize="11.5" Foreground="#A1A1AA" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock FontSize="11.5" Foreground="#71717A">
+                                                        <Run Text="{Binding HardwareProfile.ShortMemoryLabel, Mode=OneWay}"/>
+                                                        <Run Text=" · "/>
+                                                        <Run Text="{Binding RunCountDisplay, Mode=OneWay}"/>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                                <Border Grid.Column="1" VerticalAlignment="Top" CornerRadius="4" Padding="6,2"
+                                                        Background="{Binding Verdict.BadgeColorHex}">
+                                                    <TextBlock Text="{Binding Verdict.Level}" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                                </Border>
+                                            </Grid>
+
+                                            <!-- 該設備底下場次清單 -->
+                                            <ItemsControl ItemsSource="{Binding Sessions}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type models:BenchmarkSession}">
+                                                        <Border Background="Transparent" Padding="3,4" CornerRadius="4"
+                                                                MouseLeftButtonDown="SessionItem_MouseLeftButtonDown" Cursor="Hand"
+                                                                ToolTip="雙擊開啟此場次時間軸與詳細任務分析">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <CheckBox Grid.Column="0" IsChecked="{Binding IsIncluded, Mode=TwoWay}" Margin="0,0,6,0"/>
+                                                                <StackPanel Grid.Column="1">
+                                                                    <TextBlock Text="{Binding SessionName}" FontSize="12" Foreground="#E4E4E7" FontFamily="Consolas"/>
+                                                                    <TextBlock FontSize="11" Foreground="#71717A">
+                                                                        <Run Text="{Binding DurationText, Mode=OneWay}"/>
+                                                                        <Run Text=" | CPU P95: "/>
+                                                                        <Run Text="{Binding CpuP95, StringFormat={}{0:0.#}%, Mode=OneWay}"/>
+                                                                    </TextBlock>
+                                                                </StackPanel>
+                                                                <Border Grid.Column="2" VerticalAlignment="Center" CornerRadius="3" Padding="5,1"
+                                                                        Background="#27272A">
+                                                                    <TextBlock Text="{Binding RamPeakPercent, StringFormat=RAM {0:0}%}" FontSize="10.5" Foreground="#34D399"/>
+                                                                </Border>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!-- 手動指派目前選取場次之設備別名（方便整理無 ref.txt 的合併資料夾） -->
+                    <Border Grid.Row="2" Background="#16161A" BorderBrush="#2C2C32" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,6,0,0">
+                        <StackPanel>
+                            <TextBlock Text="為選取場次指派/覆寫設備名稱（可整理無 ref.txt 舊檔）：" FontSize="11" Foreground="#A1A1AA" Margin="0,0,0,4"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" Text="{Binding CustomAliasInput, UpdateSourceTrigger=PropertyChanged}" FontSize="12" Padding="6,3"/>
+                                <Button Grid.Column="1" Content="套用" Style="{StaticResource DarkBtn}" Padding="8,3" FontSize="11.5" Command="{Binding ApplyAliasCommand}" Margin="4,0,0,0"/>
+                                <Button Grid.Column="2" Content="還原" Style="{StaticResource DarkBtn}" Padding="8,3" FontSize="11.5" Command="{Binding ClearAliasCommand}" Margin="4,0,0,0"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch" Background="Transparent" Cursor="SizeWE"/>
+
+            <!-- 右側四大主要功能分頁 -->
+            <TabControl Grid.Column="2" SelectedIndex="{Binding SelectedTabIndex}" Background="Transparent" BorderThickness="0">
+
+                <!-- Tab 1: 設備總覽與選型建議 -->
+                <TabItem Header="1. 設備總覽與選型建議">
+                    <Border Style="{StaticResource CardStyle}" CornerRadius="0,8,8,8">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="220"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- KPI 摘要卡片列 -->
+                            <Grid Grid.Row="0" Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Background="#151518" BorderBrush="#2C2C32" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,6,0">
+                                    <StackPanel>
+                                        <TextBlock Text="已納入比較設備" FontSize="12" Foreground="#A1A1AA"/>
+                                        <TextBlock Text="{Binding KpiDeviceCountText}" FontSize="22" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="1" Background="#151518" BorderBrush="#2C2C32" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,6,0">
+                                    <StackPanel>
+                                        <TextBlock Text="納入有效測試場次" FontSize="12" Foreground="#A1A1AA"/>
+                                        <TextBlock Text="{Binding KpiRunCountText}" FontSize="22" FontWeight="Bold" Foreground="#38BDF8" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="2" Background="#151518" BorderBrush="#2C2C32" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,6,0">
+                                    <StackPanel>
+                                        <TextBlock Text="規格餘裕充足 (PASS)" FontSize="12" Foreground="#A1A1AA"/>
+                                        <TextBlock Text="{Binding KpiPassCountText}" FontSize="22" FontWeight="Bold" Foreground="#10B981" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="3" Background="#151518" BorderBrush="#2C2C32" BorderThickness="1" CornerRadius="6" Padding="10">
+                                    <StackPanel>
+                                        <TextBlock Text="需警戒 / 建議升級" FontSize="12" Foreground="#A1A1AA"/>
+                                        <TextBlock Text="{Binding KpiAttentionCountText}" FontSize="22" FontWeight="Bold" Foreground="#F59E0B" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <!-- 跨設備硬體規格與選型比較表 -->
+                            <DataGrid Grid.Row="1" ItemsSource="{Binding DeviceGroups}" Margin="0,0,0,10">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="設備名稱" Binding="{Binding DisplayName}" Width="140"/>
+                                    <DataGridTextColumn Header="CPU 規格" Binding="{Binding HardwareProfile.ShortCpuLabel}" Width="210"/>
+                                    <DataGridTextColumn Header="記憶體" Binding="{Binding HardwareProfile.ShortMemoryLabel}" Width="125"/>
+                                    <DataGridTextColumn Header="作業系統" Binding="{Binding HardwareProfile.ShortOsLabel}" Width="175"/>
+                                    <DataGridTextColumn Header="次數" Binding="{Binding RunCountDisplay}" Width="65"/>
+                                    <DataGridTextColumn Header="CPU Avg / P95 / Max" Binding="{Binding CpuSummaryDisplay}" Width="160"/>
+                                    <DataGridTextColumn Header="RAM Peak" Binding="{Binding RamPeakDisplay}" Width="125"/>
+                                    <DataGridTemplateColumn Header="適配判定與升級建議" Width="*">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel>
+                                                    <Border HorizontalAlignment="Left" CornerRadius="4" Padding="7,2" Background="{Binding Verdict.BadgeColorHex}" Margin="0,0,0,3">
+                                                        <TextBlock Text="{Binding Verdict.BadgeText}" FontSize="11.5" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                                    </Border>
+                                                    <TextBlock Text="{Binding Verdict.Recommendation}" FontSize="11.5" Foreground="#D4D4D8" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <!-- 跨設備對比柱狀圖 -->
+                            <Border Grid.Row="2" Background="#141416" BorderBrush="#2C2C32" BorderThickness="1" CornerRadius="6" Padding="8">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="跨設備負載比較長條圖 (橘虛線為 CPU P95 門檻 / 紅虛線為 RAM Peak 門檻)" FontSize="12" FontWeight="SemiBold" Foreground="#A1A1AA" Margin="4,0,0,4"/>
+                                    <controls:FleetComparisonChart Grid.Row="1"
+                                                                   ChartMode="Fleet"
+                                                                   Devices="{Binding ChartDevices}"
+                                                                   CpuPassLimit="{Binding CpuP95PassLimit}"
+                                                                   RamPassLimit="{Binding RamPeakPassLimit}"/>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </TabItem>
+
+                <!-- Tab 2: 同機多次測試趨勢 -->
+                <TabItem Header="2. 同機多次測試趨勢">
+                    <Border Style="{StaticResource CardStyle}" CornerRadius="0,8,8,8">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="230"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                                <TextBlock Text="選擇檢視設備：" VerticalAlignment="Center" Foreground="#A1A1AA" Margin="0,0,8,0"/>
+                                <ComboBox Width="340" ItemsSource="{Binding DeviceGroups}" SelectedItem="{Binding SelectedTrendDevice}" DisplayMemberPath="DisplayName"
+                                          Padding="8,5" Foreground="#111827"/>
+                                <TextBlock Text="{Binding SelectedTrendDevice.Verdict.BadgeText}" VerticalAlignment="Center" Margin="14,0,0,0" FontWeight="Bold" Foreground="#38BDF8"/>
+                            </StackPanel>
+
+                            <Border Grid.Row="1" Background="#141416" BorderBrush="#2C2C32" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,10">
+                                <controls:FleetComparisonChart ChartMode="Trend"
+                                                               TrendSessions="{Binding SelectedTrendDevice.Sessions}"
+                                                               CpuPassLimit="{Binding CpuP95PassLimit}"
+                                                               RamPassLimit="{Binding RamPeakPassLimit}"/>
+                            </Border>
+
+                            <Grid Grid.Row="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1.2*"/>
+                                    <ColumnDefinition Width="10"/>
+                                    <ColumnDefinition Width="1*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <DataGrid Grid.Column="0" ItemsSource="{Binding SelectedTrendDevice.Sessions}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="場次資料夾" Binding="{Binding SessionName}" Width="140"/>
+                                        <DataGridTextColumn Header="時長" Binding="{Binding DurationText}" Width="65"/>
+                                        <DataGridTextColumn Header="CPU Avg" Binding="{Binding CpuAvg, StringFormat={}{0:0.0}%}" Width="75"/>
+                                        <DataGridTextColumn Header="CPU P95" Binding="{Binding CpuP95, StringFormat={}{0:0.0}%}" Width="75"/>
+                                        <DataGridTextColumn Header="CPU Max" Binding="{Binding CpuMax, StringFormat={}{0:0.0}%}" Width="75"/>
+                                        <DataGridTextColumn Header="RAM Peak" Binding="{Binding RamPeakPercent, StringFormat={}{0:0}%}" Width="80"/>
+                                        <DataGridTextColumn Header="結論" Binding="{Binding Verdict.BadgeText}" Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <DataGrid Grid.Column="2" ItemsSource="{Binding SelectedTrendDevice.TopTasks}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="跨輪次高耗能任務" Binding="{Binding TaskName}" Width="150"/>
+                                        <DataGridTextColumn Header="Active CPU Avg" Binding="{Binding ActiveCpuAvg, StringFormat={}{0:0.0}%}" Width="105"/>
+                                        <DataGridTextColumn Header="CPU Peak" Binding="{Binding ActiveCpuMax, StringFormat={}{0:0.0}%}" Width="80"/>
+                                        <DataGridTextColumn Header="RAM Peak" Binding="{Binding ActiveRamMaxMb, StringFormat={}{0:0.0} MB}" Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </TabItem>
+
+                <!-- Tab 3: 單次時間軸與任務剖析 -->
+                <TabItem Header="3. 單次時間軸與任務剖析">
+                    <Border Style="{StaticResource CardStyle}" CornerRadius="0,8,8,8">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="240"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- 場次切換與重置縮放 -->
+                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="320"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="檢視場次：" VerticalAlignment="Center" Foreground="#A1A1AA" Margin="0,0,8,0"/>
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding VisibleSessions}" SelectedItem="{Binding SelectedSession}"
+                                          DisplayMemberPath="SessionName" Padding="8,4" Foreground="#111827"/>
+                                <Border Grid.Column="2" Margin="12,0,0,0" HorizontalAlignment="Left" CornerRadius="4" Padding="8,3"
+                                        Background="{Binding SelectedSession.Verdict.BadgeColorHex}">
+                                    <TextBlock Text="{Binding SelectedSession.Verdict.BadgeText}" FontWeight="Bold" FontSize="12" Foreground="#FFFFFF"/>
+                                </Border>
+                                <Button Grid.Column="3" Content="重設時間軸縮放" Style="{StaticResource DarkBtn}" Click="ResetTimelineZoom_Click"/>
+                            </Grid>
+
+                            <!-- ref.txt 硬體與 OS 詳細規格帶 -->
+                            <Border Grid.Row="1" Background="#151518" BorderBrush="#2C2C32" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                        <TextBlock FontSize="12" Foreground="#D4D4D8" TextTrimming="CharacterEllipsis">
+                                            <Run Text="裝置：" Foreground="#71717A"/><Run Text="{Binding SelectedSession.EffectiveDeviceDisplayName, Mode=OneWay}" FontWeight="SemiBold"/>
+                                        </TextBlock>
+                                        <TextBlock FontSize="12" Foreground="#D4D4D8" TextTrimming="CharacterEllipsis">
+                                            <Run Text="CPU：" Foreground="#71717A"/><Run Text="{Binding SelectedSession.HardwareProfile.ShortCpuLabel, Mode=OneWay}"/>
+                                        </TextBlock>
+                                        <TextBlock FontSize="12" Foreground="#D4D4D8">
+                                            <Run Text="快取：" Foreground="#71717A"/>
+                                            <Run Text="L1 "/><Run Text="{Binding SelectedSession.HardwareProfile.L1Cache, Mode=OneWay}"/>
+                                            <Run Text=" | L2 "/><Run Text="{Binding SelectedSession.HardwareProfile.L2Cache, Mode=OneWay}"/>
+                                            <Run Text=" | L3 "/><Run Text="{Binding SelectedSession.HardwareProfile.L3Cache, Mode=OneWay}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                                        <TextBlock FontSize="12" Foreground="#D4D4D8" TextTrimming="CharacterEllipsis">
+                                            <Run Text="記憶體：" Foreground="#71717A"/><Run Text="{Binding SelectedSession.HardwareProfile.MemoryInstalledText, Mode=OneWay}"/>
+                                        </TextBlock>
+                                        <TextBlock FontSize="12" Foreground="#D4D4D8">
+                                            <Run Text="規格/插槽：" Foreground="#71717A"/>
+                                            <Run Text="{Binding SelectedSession.HardwareProfile.MemorySpecType, Mode=OneWay}"/>
+                                            <Run Text=" "/>
+                                            <Run Text="{Binding SelectedSession.HardwareProfile.MemorySpeed, Mode=OneWay}"/>
+                                            <Run Text=" ("/>
+                                            <Run Text="{Binding SelectedSession.HardwareProfile.MemorySlotsUsed, Mode=OneWay}"/>
+                                            <Run Text=")"/>
+                                        </TextBlock>
+                                        <TextBlock FontSize="12" Foreground="#D4D4D8" TextTrimming="CharacterEllipsis">
+                                            <Run Text="GPU / NPU：" Foreground="#71717A"/><Run Text="{Binding SelectedSession.HardwareProfile.GpuSummary, Mode=OneWay}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock FontSize="12" Foreground="#D4D4D8" TextTrimming="CharacterEllipsis">
+                                            <Run Text="作業系統：" Foreground="#71717A"/><Run Text="{Binding SelectedSession.HardwareProfile.ShortOsLabel, Mode=OneWay}"/>
+                                            <Run Text=" | Build "/><Run Text="{Binding SelectedSession.HardwareProfile.OsBuild, Mode=OneWay}"/>
+                                        </TextBlock>
+                                        <TextBlock FontSize="12" Foreground="#D4D4D8">
+                                            <Run Text="系統 CPU：" Foreground="#71717A"/>
+                                            <Run Text="{Binding SelectedSession.CpuAvg, StringFormat=Avg {0:0.0}%, Mode=OneWay}"/>
+                                            <Run Text=" | "/><Run Text="{Binding SelectedSession.CpuP95, StringFormat=P95 {0:0.0}%, Mode=OneWay}" FontWeight="SemiBold"/>
+                                            <Run Text=" | "/><Run Text="{Binding SelectedSession.CpuMax, StringFormat=Max {0:0.0}%, Mode=OneWay}"/>
+                                        </TextBlock>
+                                        <TextBlock FontSize="12" Foreground="#D4D4D8">
+                                            <Run Text="程序數 / 時長：" Foreground="#71717A"/>
+                                            <Run Text="{Binding SelectedSession.HardwareProfile.TotalProcessesText, Mode=OneWay}"/>
+                                            <Run Text=" | "/><Run Text="{Binding SelectedSession.TimeAndDurationDisplay, Mode=OneWay}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- 互動同步時間軸 -->
+                            <Border Grid.Row="2" Background="#141416" BorderBrush="#2C2C32" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+                                    <StackPanel Orientation="Horizontal" Margin="4,0,0,4">
+                                        <TextBlock Text="秒級同步時間軸" FontSize="12" FontWeight="SemiBold" Foreground="#E4E4E7" Margin="0,0,14,0"/>
+                                        <Border Width="10" Height="10" Background="#00BCF9" Margin="0,0,4,0"/>
+                                        <TextBlock Text="全系統 CPU%" FontSize="11.5" Foreground="#A1A1AA" Margin="0,0,12,0"/>
+                                        <Border Width="10" Height="10" Background="#10B981" Margin="0,0,4,0"/>
+                                        <TextBlock Text="系統 RAM%" FontSize="11.5" Foreground="#A1A1AA" Margin="0,0,12,0"/>
+                                        <Border Width="10" Height="10" Background="#F59E0B" Margin="0,0,4,0"/>
+                                        <TextBlock Text="下方勾選任務 CPU% (橘底區間為影像辨識觸發)" FontSize="11.5" Foreground="#A1A1AA"/>
+                                    </StackPanel>
+                                    <controls:InteractiveTimelineChart x:Name="TimelineChart" Grid.Row="1"
+                                                                       Session="{Binding SelectedSession}"
+                                                                       CpuThreshold="{Binding CpuP95PassLimit}"
+                                                                       RamThreshold="{Binding RamPeakPassLimit}"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- 下方區域：左側任務總覽清單 + 右側已勾選任務之各次執行起訖時間與時長明細 -->
+                            <Grid Grid.Row="3">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1.15*" MinWidth="420"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="1*" MinWidth="380"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- 左側：所有監控任務列表 -->
+                                <Border Grid.Column="0" Background="#141416" BorderBrush="#2C2C32" BorderThickness="1" CornerRadius="6" Padding="6">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="監控任務總覽清單 (勾選 [顯示/比對] 即自動在圖表與右表載入每次執行的起訖時間與長度)"
+                                                   FontSize="12" FontWeight="SemiBold" Foreground="#A1A1AA" Margin="4,2,0,6"/>
+                                        <DataGrid Grid.Row="1" ItemsSource="{Binding SelectedSession.Tasks}"
+                                                  SelectedItem="{Binding SelectedTaskSummary, Mode=TwoWay}">
+                                            <DataGrid.Columns>
+                                                <DataGridTemplateColumn Header="顯示/比對" Width="72">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <CheckBox IsChecked="{Binding IsOverlayVisible, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"/>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                                <DataGridTextColumn Header="任務名稱" Binding="{Binding TaskName}" Width="150"/>
+                                                <DataGridTextColumn Header="執行次數" Binding="{Binding ExecutionCountText}" Width="110"/>
+                                                <DataGridTextColumn Header="起訖時段與長度" Binding="{Binding ExecutionTimeRangeText}" Width="200"/>
+                                                <DataGridTextColumn Header="運行樣本 / 總數" Binding="{Binding ActiveSamplesDisplay}" Width="120"/>
+                                                <DataGridTextColumn Header="CPU Avg" Binding="{Binding CpuAvgDualDisplay}" Width="110"/>
+                                                <DataGridTextColumn Header="CPU Peak" Binding="{Binding ActiveCpuMax, StringFormat={}{0:0.0}%}" Width="75"/>
+                                                <DataGridTextColumn Header="RAM Peak" Binding="{Binding RamDualDisplay}" Width="115"/>
+                                                <DataGridTextColumn Header="Disk Peak" Binding="{Binding ActiveDiskPeakKbps, StringFormat={}{0:0.0} KB/s}" Width="*"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </Grid>
+                                </Border>
+
+                                <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch" Background="Transparent" Cursor="SizeWE"/>
+
+                                <!-- 右側：已勾選任務之各次執行起訖時間與時長明細表 (支援程式執行後關閉、又再執行的多次重啟) -->
+                                <Border Grid.Column="2" Background="#141416" BorderBrush="#2C2C32" BorderThickness="1" CornerRadius="6" Padding="6">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+                                        <Grid Grid.Row="0" Margin="4,2,4,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="【已勾選任務之各次執行起訖時間與時長明細】"
+                                                       FontSize="12" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding CheckedRunsCountBadge}"
+                                                       FontSize="11.5" Foreground="#A1A1AA" VerticalAlignment="Center"/>
+                                        </Grid>
+                                        <DataGrid Grid.Row="1" ItemsSource="{Binding CheckedTaskExecutionRuns}">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="任務名稱" Binding="{Binding TaskName}" Width="145"/>
+                                                <DataGridTextColumn Header="次數序號" Binding="{Binding RunLabel}" Width="72"/>
+                                                <DataGridTextColumn Header="PID" Binding="{Binding Pid}" Width="65"/>
+                                                <DataGridTextColumn Header="啟動 (起)" Binding="{Binding StartTimeText}" Width="78"/>
+                                                <DataGridTextColumn Header="停止 (訖)" Binding="{Binding EndTimeText}" Width="78"/>
+                                                <DataGridTextColumn Header="執行長度 (時長)" Binding="{Binding DurationWithSamplesText}" Width="120"/>
+                                                <DataGridTextColumn Header="該次 CPU" Binding="{Binding CpuDisplay}" Width="105"/>
+                                                <DataGridTextColumn Header="該次 RAM Peak" Binding="{Binding RamDisplay}" Width="95"/>
+                                                <DataGridTextColumn Header="該次 Disk Peak" Binding="{Binding DiskDisplay}" Width="*"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </TabItem>
+
+                <!-- Tab 4: 門檻設定、並排差異比對與匯出 -->
+                <TabItem Header="4. 門檻設定與場次比對">
+                    <Border Style="{StaticResource CardStyle}" CornerRadius="0,8,8,8">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- 硬體評估門檻控制面板 -->
+                            <Border Grid.Row="0" Background="#151518" BorderBrush="#2C2C32" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,10">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                                        <TextBlock Text="硬體規格適配與升級門檻設定（調整滑桿即即時重新判定所有設備 PASS / 警戒 / 建議升級）" FontSize="13" FontWeight="SemiBold"/>
+                                        <Button Content="重設預設門檻 (70% / 80%)" HorizontalAlignment="Right" Style="{StaticResource DarkBtn}" Padding="10,3" FontSize="11.5" Command="{Binding ResetThresholdsCommand}"/>
+                                    </Grid>
+                                    <Grid Grid.Row="1">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="16"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock FontSize="12" Foreground="#D4D4D8" Margin="0,0,0,4">
+                                                <Run Text="CPU P95 安全上限 (PASS &lt; "/><Run Text="{Binding CpuP95PassLimit, StringFormat={}{0:0}%}" FontWeight="Bold" Foreground="#38BDF8"/>
+                                                <Run Text=" / 升級線 &gt; "/><Run Text="{Binding CpuP95WarnLimit, StringFormat={}{0:0}%}" FontWeight="Bold" Foreground="#F59E0B"/><Run Text=")"/>
+                                            </TextBlock>
+                                            <Slider Minimum="40" Maximum="90" Value="{Binding CpuP95PassLimit, Mode=TwoWay}" TickFrequency="5" IsSnapToTickEnabled="True"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock FontSize="12" Foreground="#D4D4D8" Margin="0,0,0,4">
+                                                <Run Text="RAM 峰值安全上限 (PASS &lt; "/><Run Text="{Binding RamPeakPassLimit, StringFormat={}{0:0}%}" FontWeight="Bold" Foreground="#10B981"/>
+                                                <Run Text=" / 升級線 &gt; "/><Run Text="{Binding RamPeakWarnLimit, StringFormat={}{0:0}%}" FontWeight="Bold" Foreground="#EF4444"/><Run Text=")"/>
+                                            </TextBlock>
+                                            <Slider Minimum="50" Maximum="95" Value="{Binding RamPeakPassLimit, Mode=TwoWay}" TickFrequency="5" IsSnapToTickEnabled="True"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+
+                            <!-- 選擇基準場次 -->
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="Delta 比較基準場次：" VerticalAlignment="Center" Foreground="#A1A1AA" Margin="0,0,8,0"/>
+                                <ComboBox Width="300" ItemsSource="{Binding VisibleSessions}" SelectedItem="{Binding BaselineSession}" DisplayMemberPath="SessionName" Padding="8,4" Foreground="#111827"/>
+                                <TextBlock Text="（下方列出所有左側已勾選場次相對於基準場次的 CPU P95 與 RAM Peak 增減差異）" VerticalAlignment="Center" Foreground="#71717A" FontSize="11.5" Margin="10,0,0,0"/>
+                            </StackPanel>
+
+                            <!-- 並排差異比對表 -->
+                            <DataGrid Grid.Row="2" ItemsSource="{Binding ComparisonRows}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="場次" Binding="{Binding SessionLabel}" Width="140"/>
+                                    <DataGridTextColumn Header="設備名稱" Binding="{Binding DeviceName}" Width="135"/>
+                                    <DataGridTextColumn Header="CPU 型號" Binding="{Binding CpuModel}" Width="195"/>
+                                    <DataGridTextColumn Header="記憶體" Binding="{Binding RamSpec}" Width="105"/>
+                                    <DataGridTextColumn Header="時長" Binding="{Binding DurationText}" Width="65"/>
+                                    <DataGridTextColumn Header="CPU P95" Binding="{Binding CpuP95, StringFormat={}{0:0.0}%}" Width="75"/>
+                                    <DataGridTextColumn Header="CPU P95 差異" Binding="{Binding CpuP95DeltaText}" Width="115"/>
+                                    <DataGridTextColumn Header="RAM Peak%" Binding="{Binding RamPeakPercent, StringFormat={}{0:0}%}" Width="85"/>
+                                    <DataGridTextColumn Header="RAM 差異" Binding="{Binding RamPeakDeltaText}" Width="115"/>
+                                    <DataGridTemplateColumn Header="適配判定" Width="*">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border HorizontalAlignment="Left" CornerRadius="4" Padding="6,2" Background="{Binding VerdictColorHex}">
+                                                    <TextBlock Text="{Binding VerdictBadge}" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+                </TabItem>
+
+            </TabControl>
+        </Grid>
+
+        <!-- 3. 底部狀態列 -->
+        <Border Grid.Row="2" Background="#18181B" BorderBrush="#27272A" BorderThickness="1" CornerRadius="6" Padding="10,5" Margin="0,8,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding StatusMessage}" FontSize="12" Foreground="#A1A1AA" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Text="支援直接拖放 Log 資料夾至視窗 ｜ 製作者: Office of William" FontSize="11.5" Foreground="#71717A" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

@@ -1,0 +1,9 @@
+<Application x:Class="TRIOV2.DbIoSimulator.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="DbSimulatorMainWindow.xaml">
+    <Application.Resources>
+
+    </Application.Resources>
+</Application>
+

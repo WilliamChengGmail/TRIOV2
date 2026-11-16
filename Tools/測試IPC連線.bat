@@ -6,5 +6,5 @@ echo   No admin rights needed (simulates App side)
 echo ==================================================
 echo.
 
-dotnet run --project "%~dp0ServiceTestTool\ServiceTestTool.csproj"
+dotnet run --project "%~dp0..\src\Tools\ServiceTestTool\ServiceTestTool.csproj"
 pause

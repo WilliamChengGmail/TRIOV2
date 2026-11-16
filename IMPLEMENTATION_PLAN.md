@@ -33,6 +33,64 @@
 * **資料庫變更**：
   * `users` 資料表新增 `google_id` (VARCHAR, NULLABLE) 與 `avatar_url` 欄位。
 
+### 2.3 目錄與檔案放置規則 (Directory & File Placement Rules)
+
+> 本專案對「工具」相關檔案有明確的目錄慣例，撰寫 2.1 檔案異動清單時請依此規則填寫路徑。
+> 詳細規則請參閱 `.agents\rules\tools_directory.md`。
+
+| 類型 | 放置位置 | 說明 |
+| :--- | :--- | :--- |
+| **自研工具原始碼 / 專案** | `src\Tools\<工具名稱>\` | 自行開發的工具（例如：效能模擬器），其專案原始碼一律放在 `src\Tools\` 之下，與一般 `src` 模組一同版控管理。 |
+| **可執行檔 / 相依檔案 / 執行用資料夾** | `Tools\` | 建置後產生的執行檔、執行所需的相依檔案（DLL、設定檔、資源等）或資料夾，統一放在專案根目錄的 `Tools\`，供直接執行使用。 |
+
+**規則重點：**
+
+- `src\Tools\`：**開發階段**的原始碼，受版控管理。
+- `Tools\`：**建置階段**的執行產物（角色等同一般專案的 `bin\`）。當建置/輸出未指定路徑時，一律輸出到 `Tools\`，不要散落在專案其他目錄。
+- 2.1 檔案異動清單的「檔案路徑」欄位，必須符合上表規則。
+
+**範例：**
+
+| 操作類型 | 檔案路徑 | 變更說明 |
+| :--- | :--- | :--- |
+| 新增 | `src\Tools\PerfSimulator\main.py` | 自研「效能模擬器」原始碼專案 |
+| 新增 | `Tools\PerfSimulator.exe` | 效能模擬器建置後的執行檔（輸出未指定時，依規則放至 `Tools\`） |
+
+### 2.4 Git 操作與 Commit 規範 (Git & Commit Rules)
+
+> 執行本計畫時，所有 Git 操作與 Commit 訊息必須遵守下列規範。
+> 詳細規則請參閱 `.agents\rules\git_commit_rules.md`。
+
+**操作權限規範：**
+
+- 僅在**使用者明確指示**（主動通知）時，才可執行 `git add`、`git commit`、`git push` 等寫入操作。
+- 使用者未指示前，AI 不得自行 commit；可先備妥「變更檔案清單」與「Commit 訊息草稿」供使用者確認。
+
+**Commit 訊息規範：**
+
+- Commit 訊息必須為**完整的中文變更說明**，說明本次做了什麼、為什麼做。
+- 必須**適度排版（多行）**，禁止將所有說明擠在同一行。
+
+**格式範例：**
+
+```text
+feat(auth): 新增 Google OAuth2 登入流程
+
+變更內容：
+- 新增 src/auth/oauth2.ts：OAuth2 驗證與 Token 交換邏輯
+- 修改 src/routes/user.ts：新增 /auth/google/callback 路由
+- 修改 src/config/env.ts：新增 GOOGLE_CLIENT_ID 環境變數
+
+驗證方式：
+- 單元測試：npm run test src/auth/oauth2.test.ts
+```
+
+**不良範例（禁止）：**
+
+```text
+fix: 修登入功能還改了路由和env設定
+```
+
 ---
 
 ## 3. 具體實作步驟 (Step-by-Step Implementation)

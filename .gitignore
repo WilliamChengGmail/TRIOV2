@@ -396,3 +396,17 @@ tmp/
 
 # Agent 規劃檔與導覽檔
 docs/agent/
+
+# AI implementation plan, walkthrough and tasks
+DocumentsAndInformation/
+
+# Ignore Files and Folders (outsourcing tools)
+outsourceing Tools/
+
+# Testing and Verification Tools
+/Tools/
+publish_tools/
+
+# 備份資料夾
+.backup/
+.backups/
