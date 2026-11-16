@@ -21,5 +21,5 @@ echo [INFO] Named Pipe: TRIO2026_PrivilegedService
 echo [INFO] Press Ctrl+C to stop
 echo.
 
-dotnet run --project "%~dp0..\src\TRIO2026.PrivilegedService\TRIO2026.PrivilegedService.csproj"
+dotnet run --project "%~dp0..\src\TRIOV2.PrivilegedService\TRIOV2.PrivilegedService.csproj"
 pause

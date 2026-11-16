@@ -5,6 +5,5 @@ echo   TRIO2026 PrivilegedService IPC Test Tool
 echo   No admin rights needed (simulates App side)
 echo ==================================================
 echo.
-
-dotnet run --project "%~dp0ServiceTestTool\ServiceTestTool.csproj"
+"%~dp0ServiceTestTool\ServiceTestTool.exe"
 pause

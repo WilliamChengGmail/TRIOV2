@@ -1,2 +1,2 @@
 @echo off
-start "" "%~dp0DevLauncher_bin\TRIOV2.DevLauncher.exe"
+start "" "%~dp0DevLauncher\TRIOV2.DevLauncher.exe"

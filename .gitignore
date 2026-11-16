@@ -401,8 +401,11 @@ docs/agent/
 DocumentsAndInformation/
 # Ignore Files and Folders (outsourcing tools)
 outsourceing Tools/
-# Testing and Verification Tools
-Tools/
+# Testing and Verification Tools (root-level built outputs only;
+# tool sources under src/Tools/ must remain trackable)
+/Tools/
+# Tool project build/report outputs (keep sources clean)
+src/Tools/**/out/
 publish_tools/
 # 備份資料夾
 .backup/

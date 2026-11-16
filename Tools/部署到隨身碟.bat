@@ -36,8 +36,8 @@ if exist "%DEPLOY_DIR%" (
 )
 
 :: 發布 App
-echo [2/5] 發布 TRIO2026.App (Release)...
-dotnet publish "%PROJECT_ROOT%\src\TRIO2026.App\TRIO2026.App.csproj" -c Release -r win-x64 --self-contained true -o "%DEPLOY_DIR%\App" >nul 2>&1
+echo [2/5] 發布 TRIOV2.App (Release)...
+dotnet publish "%PROJECT_ROOT%\src\TRIOV2.App\TRIOV2.App.csproj" -c Release -r win-x64 --self-contained true -o "%DEPLOY_DIR%\App" >nul 2>&1
 if errorlevel 1 (
     echo [錯誤] App 發布失敗
     pause
@@ -47,7 +47,7 @@ echo       完成
 
 :: 發布 PrivilegedService
 echo [3/5] 發布 PrivilegedService (Release)...
-dotnet publish "%PROJECT_ROOT%\src\TRIO2026.PrivilegedService\TRIO2026.PrivilegedService.csproj" -c Release -r win-x64 --self-contained true -o "%DEPLOY_DIR%\Service" >nul 2>&1
+dotnet publish "%PROJECT_ROOT%\src\TRIOV2.PrivilegedService\TRIOV2.PrivilegedService.csproj" -c Release -r win-x64 --self-contained true -o "%DEPLOY_DIR%\Service" >nul 2>&1
 if errorlevel 1 (
     echo [錯誤] Service 發布失敗
     pause
@@ -76,7 +76,7 @@ echo.
 echo ============================================
 echo   部署完成！
 echo   路徑: %DEPLOY_DIR%
-echo   啟動: %DEPLOY_DIR%\App\TRIO2026.App.exe
+echo   啟動: %DEPLOY_DIR%\App\TRIOV2.App.exe
 echo ============================================
 echo.
 pause
