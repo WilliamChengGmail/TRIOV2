@@ -5,7 +5,6 @@ using System.IO;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
-using System.Windows.Threading;
 using Microsoft.Win32;
 using TRIOV2.ResourceSimulator.Core;
 
@@ -37,16 +36,12 @@ public sealed class RelayCommand : ICommand
 }
 
 /// <summary>
-/// 模擬器視圖模型 (MVVM 狀態中心 - 具備即時雙向更新、工作管理員行程監視與多任務獨立採樣)
+/// 效能資源監控紀錄器視圖模型 (MVVM 狀態中心 - 具備即時雙向更新、工作管理員行程監視與多任務獨立採樣)
 /// 製作者: Office of William
 /// </summary>
 public sealed class SimulatorViewModel : ViewModelBase, IDisposable
 {
     private readonly SystemPerformanceSampler _sampler;
-    private readonly MemoryPressureEngine _memoryEngine;
-    private readonly CpuDutyCycleEngine _cpuEngine;
-    private readonly WorkloadScheduler _scheduler;
-    private readonly DispatcherTimer _memDebounceTimer;
     private readonly PerformanceSessionRecorder _recorder = new();
 
     // 行程監視與多任務記錄器
@@ -55,25 +50,17 @@ public sealed class SimulatorViewModel : ViewModelBase, IDisposable
     private readonly SystemHardwareInspector _hardwareInspector = new();
     private readonly ICollectionView _processView;
 
-    // 狀態設定
-    private OperatingMode _selectedMode = OperatingMode.SingleShot;
-    private float _targetCpuPercent = 15.0f;
-    private int _targetMemoryMb = 270;
-    private int _inferenceDurationMs = 800;
-    private int _periodicIntervalSeconds = 3;
+    // 視窗設定
     private bool _isAlwaysOnTop = true;
-    private bool _isActive;
 
     // 即時效能讀數 (左側)
     private string _totalCpuText = "0.0 %";
-    private string _simulatorCpuText = "0.0 %";
     private string _remainingCpuText = "100.0 %";
     private string _totalMemoryText = "16.0 GB";
     private string _usedMemoryText = "0.0 GB";
     private string _availableMemoryText = "0.0 GB";
     private string _memoryUsagePercentText = "0 %";
-    private string _simulatorMemoryText = "270 MB";
-    private string _statusText = "🟢 待機中 (隨時可拍圖辨識)";
+    private string _statusText = "🟢 即時監控中 (每秒持續取樣)";
 
     // 區間統計量測狀態與讀數
     private bool _isRecording;
@@ -96,7 +83,6 @@ public sealed class SimulatorViewModel : ViewModelBase, IDisposable
     private string _customTargetSummaryText = string.Empty;
 
     public SystemPerformanceSampler Sampler => _sampler;
-    public WorkloadScheduler Scheduler => _scheduler;
     public PerformanceSessionRecorder Recorder => _recorder;
     public MultiProcessSessionRecorder MultiRecorder => _multiRecorder;
 
@@ -105,116 +91,16 @@ public sealed class SimulatorViewModel : ViewModelBase, IDisposable
 
     #region Properties
 
-    public OperatingMode SelectedMode
-    {
-        get => _selectedMode;
-        set
-        {
-            if (SetProperty(ref _selectedMode, value))
-            {
-                _scheduler.SetMode(value);
-                UpdateStatus();
-                OnPropertyChanged(nameof(IsSingleShotMode));
-                OnPropertyChanged(nameof(IsPeriodicMode));
-                OnPropertyChanged(nameof(IsContinuousMode));
-            }
-        }
-    }
-
-    public bool IsSingleShotMode
-    {
-        get => _selectedMode == OperatingMode.SingleShot;
-        set { if (value) SelectedMode = OperatingMode.SingleShot; }
-    }
-
-    public bool IsPeriodicMode
-    {
-        get => _selectedMode == OperatingMode.PeriodicBatch;
-        set { if (value) SelectedMode = OperatingMode.PeriodicBatch; }
-    }
-
-    public bool IsContinuousMode
-    {
-        get => _selectedMode == OperatingMode.Continuous;
-        set { if (value) SelectedMode = OperatingMode.Continuous; }
-    }
-
-    public float TargetCpuPercent
-    {
-        get => _targetCpuPercent;
-        set
-        {
-            if (SetProperty(ref _targetCpuPercent, (float)Math.Round(value, 1)))
-            {
-                SyncParameters(immediateMemory: false);
-            }
-        }
-    }
-
-    public int TargetMemoryMb
-    {
-        get => _targetMemoryMb;
-        set
-        {
-            if (SetProperty(ref _targetMemoryMb, value))
-            {
-                SyncParameters(immediateMemory: false);
-            }
-        }
-    }
-
-    public int InferenceDurationMs
-    {
-        get => _inferenceDurationMs;
-        set
-        {
-            if (SetProperty(ref _inferenceDurationMs, value))
-            {
-                SyncParameters(immediateMemory: false);
-            }
-        }
-    }
-
-    public int PeriodicIntervalSeconds
-    {
-        get => _periodicIntervalSeconds;
-        set
-        {
-            if (SetProperty(ref _periodicIntervalSeconds, value))
-            {
-                SyncParameters(immediateMemory: false);
-            }
-        }
-    }
-
     public bool IsAlwaysOnTop
     {
         get => _isAlwaysOnTop;
         set => SetProperty(ref _isAlwaysOnTop, value);
     }
 
-    public bool IsActive
-    {
-        get => _isActive;
-        private set
-        {
-            if (SetProperty(ref _isActive, value))
-            {
-                UpdateStatus();
-            }
-        }
-    }
-
     public string TotalCpuText
     {
         get => _totalCpuText;
         private set => SetProperty(ref _totalCpuText, value);
-    }
-
-    public string SimulatorCpuText
-    {
-        get => _simulatorCpuText;
-        private set => SetProperty(ref _simulatorCpuText, value);
     }
 
     public string RemainingCpuText
@@ -245,12 +131,6 @@ public sealed class SimulatorViewModel : ViewModelBase, IDisposable
     {
         get => _memoryUsagePercentText;
         private set => SetProperty(ref _memoryUsagePercentText, value);
-    }
-
-    public string SimulatorMemoryText
-    {
-        get => _simulatorMemoryText;
-        private set => SetProperty(ref _simulatorMemoryText, value);
     }
 
     public string StatusText
@@ -391,15 +271,6 @@ public sealed class SimulatorViewModel : ViewModelBase, IDisposable
 
     #region Commands
 
-    public ICommand TriggerSingleShotCommand { get; }
-    public ICommand StartPeriodicCommand { get; }
-    public ICommand StopCommand { get; }
-
-    public ICommand ApplyPresetBaselineCommand { get; }
-    public ICommand ApplyPresetLowCommand { get; }
-    public ICommand ApplyPresetHighCommand { get; }
-    public ICommand ApplyPresetExtremeCommand { get; }
-
     public ICommand StartRecordingCommand { get; }
     public ICommand StopRecordingCommand { get; }
     public ICommand CopyRecordSummaryCommand { get; }
@@ -423,9 +294,6 @@ public sealed class SimulatorViewModel : ViewModelBase, IDisposable
     public SimulatorViewModel()
     {
         _sampler = new SystemPerformanceSampler();
-        _memoryEngine = new MemoryPressureEngine();
-        _cpuEngine = new CpuDutyCycleEngine(_memoryEngine);
-        _scheduler = new WorkloadScheduler(_cpuEngine, _memoryEngine);
         _hardwareInspector.WarmupAsync();
 
         // 初始化行程過濾視圖
@@ -452,38 +320,12 @@ public sealed class SimulatorViewModel : ViewModelBase, IDisposable
             UpdateSelectedCount();
         };
 
-        // 記憶體滑桿防抖定時器 (250ms)
-        _memDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
-        _memDebounceTimer.Tick += (s, e) =>
-        {
-            _memDebounceTimer.Stop();
-            _scheduler.UpdateParameters(
-                _targetCpuPercent,
-                _targetMemoryMb,
-                _inferenceDurationMs,
-                _periodicIntervalSeconds * 1000
-            );
-        };
-
-        _scheduler.ActivityStateChanged += active =>
-        {
-            Application.Current?.Dispatcher.InvokeAsync(() => IsActive = active);
-        };
-
         // 1Hz 核心採樣滴答回呼
         _sampler.SnapshotUpdated += snapshot =>
         {
             try
             {
-                string modeName = _selectedMode switch
-                {
-                    OperatingMode.SingleShot => "單次拍圖辨識",
-                    OperatingMode.PeriodicBatch => "週期連續排程",
-                    OperatingMode.Continuous => "極限連續高壓",
-                    _ => "未知"
-                };
-
-                // 1. 全系統與模擬器效能樣本寫入
+                // 1. 全系統效能樣本寫入 (基準監控模式)
                 _recorder.AddSample(
                     totalCpu: snapshot.TotalCpuPercent,
                     simulatorCpu: snapshot.SimulatorCpuPercent,
@@ -493,9 +335,9 @@ public sealed class SimulatorViewModel : ViewModelBase, IDisposable
                     availableMemGb: snapshot.AvailableMemoryGb,
                     memPercent: snapshot.MemoryUsagePercent,
                     simulatorMemMb: snapshot.SimulatorMemoryMb,
-                    isInferenceActive: _scheduler.IsActive,
-                    inferenceDurationMs: _inferenceDurationMs,
-                    operatingMode: modeName
+                    isInferenceActive: false,
+                    inferenceDurationMs: 0,
+                    operatingMode: "效能監控"
                 );
 
                 // 2. 觸發行程監視器背景計算並派送 UI 原地更新 (每秒)
@@ -511,13 +353,11 @@ public sealed class SimulatorViewModel : ViewModelBase, IDisposable
                     }
 
                     TotalCpuText = $"{snapshot.TotalCpuPercent:0.0} %";
-                    SimulatorCpuText = $"{snapshot.SimulatorCpuPercent:0.0} %";
                     RemainingCpuText = $"{snapshot.RemainingCpuPercent:0.0} %";
                     TotalMemoryText = $"{snapshot.TotalMemoryGb:0.0} GB";
                     UsedMemoryText = $"{snapshot.UsedMemoryGb:0.0} GB";
                     AvailableMemoryText = $"{snapshot.AvailableMemoryGb:0.0} GB";
                     MemoryUsagePercentText = $"{snapshot.MemoryUsagePercent:0} %";
-                    SimulatorMemoryText = $"{snapshot.SimulatorMemoryMb:0} MB";
 
                     if (_recorder.IsRecording)
                     {
@@ -532,16 +372,6 @@ public sealed class SimulatorViewModel : ViewModelBase, IDisposable
                 Debug.WriteLine($"[SimulatorViewModel] Snapshot update error: {ex}");
             }
         };
-
-        // 命令初始化
-        TriggerSingleShotCommand = new RelayCommand(async () => await _scheduler.TriggerSingleShotAsync());
-        StartPeriodicCommand = new RelayCommand(() => _scheduler.StartPeriodic());
-        StopCommand = new RelayCommand(() => _scheduler.StopAll());
-
-        ApplyPresetBaselineCommand = new RelayCommand(() => ApplyPreset(15.0f, 270, 800));
-        ApplyPresetLowCommand = new RelayCommand(() => ApplyPreset(8.0f, 100, 400));
-        ApplyPresetHighCommand = new RelayCommand(() => ApplyPreset(35.0f, 1024, 1500));
-        ApplyPresetExtremeCommand = new RelayCommand(() => ApplyPreset(70.0f, 2048, 3000));
 
         // 區間紀錄與 Log 命令
         StartRecordingCommand = new RelayCommand(ExecuteStartRecording, () => !IsRecording);
@@ -755,6 +585,7 @@ public sealed class SimulatorViewModel : ViewModelBase, IDisposable
             ? $"🔴 正在紀錄全系統與 {selectedTasks.Count} 個勾選任務 (資料夾已建立)..."
             : "🔴 正在紀錄全系統效能樣本...";
 
+        StatusText = "🔴 效能日誌量測紀錄中...";
         UpdateRecordingStatsUI();
         CommandManager.InvalidateRequerySuggested();
     }
@@ -784,6 +615,7 @@ public sealed class SimulatorViewModel : ViewModelBase, IDisposable
             RecordingStatusBadge = $"⏹ 已停止 (共紀錄 {stats.SampleCount} 筆樣本)";
         }
 
+        StatusText = "🟢 即時監控中 (已儲存上一筆量測日誌)";
         UpdateRecordingStatsUI();
         CommandManager.InvalidateRequerySuggested();
     }
@@ -907,62 +739,9 @@ public sealed class SimulatorViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private void SyncParameters(bool immediateMemory = false)
-    {
-        if (immediateMemory)
-        {
-            _memDebounceTimer.Stop();
-            _scheduler.UpdateParameters(
-                _targetCpuPercent,
-                _targetMemoryMb,
-                _inferenceDurationMs,
-                _periodicIntervalSeconds * 1000
-            );
-        }
-        else
-        {
-            if (_selectedMode == OperatingMode.Continuous && _cpuEngine.IsRunning)
-            {
-                _cpuEngine.TargetCpuPercent = _targetCpuPercent;
-            }
-            _memDebounceTimer.Stop();
-            _memDebounceTimer.Start();
-        }
-    }
-
-    private void ApplyPreset(float cpu, int ramMb, int durationMs)
-    {
-        TargetCpuPercent = cpu;
-        TargetMemoryMb = ramMb;
-        InferenceDurationMs = durationMs;
-        SyncParameters(immediateMemory: true);
-    }
-
-    private void UpdateStatus()
-    {
-        if (_isActive)
-        {
-            StatusText = $"🔥 盤面辨識運算中 ({_targetCpuPercent:0}%, {_targetMemoryMb} MB)...";
-        }
-        else
-        {
-            StatusText = _selectedMode switch
-            {
-                OperatingMode.SingleShot => "🟢 待機中 (點擊按鈕模擬單次拍圖運算)",
-                OperatingMode.PeriodicBatch => "🟡 週期排程待命 (等待下次拍圖週期)",
-                OperatingMode.Continuous => "⏹ 連續高壓已停止",
-                _ => "🟢 待機中"
-            };
-        }
-    }
-
     public void Dispose()
     {
-        _memDebounceTimer.Stop();
         _procWatcher.Dispose();
         _sampler.Dispose();
-        _scheduler.Dispose();
-        _cpuEngine.Dispose();
-        _memoryEngine.Dispose();
     }
 }

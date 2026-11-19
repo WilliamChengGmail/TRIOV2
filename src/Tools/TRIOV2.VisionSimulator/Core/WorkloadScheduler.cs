@@ -1,4 +1,4 @@
-namespace TRIOV2.ResourceSimulator.Core;
+namespace TRIOV2.VisionSimulator.Core;
 
 public enum OperatingMode
 {

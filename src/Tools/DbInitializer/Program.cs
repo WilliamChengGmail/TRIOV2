@@ -50,23 +50,24 @@ catch (Exception ex)
 }
 
 /// <summary>
-/// 從工具執行目錄向上搜尋專案根目錄（包含 TRIO2026.sln）
+/// 從工具執行目錄向上搜尋專案根目錄或 Database 所在目錄
 /// </summary>
 static string FindProjectRoot()
 {
     var dir = AppDomain.CurrentDomain.BaseDirectory;
-    // 如果是 debug 模式（bin/Debug/net10.0），向上走到包含 .sln 的目錄
     while (dir != null)
     {
-        if (Directory.GetFiles(dir, "TRIO2026.sln").Length > 0)
+        if (File.Exists(Path.Combine(dir, "TRIOV2.sln")) ||
+            File.Exists(Path.Combine(dir, "TRIO2026.sln")) ||
+            Directory.Exists(Path.Combine(dir, "Database")))
+        {
             return dir;
+        }
         dir = Directory.GetParent(dir)?.FullName;
     }
 
-    // 若找不到 .sln，嘗試 D:\TRIO2026
-    var fallback = @"D:\TRIO2026";
-    if (Directory.Exists(fallback))
-        return fallback;
+    if (Directory.Exists(@"D:\TRIOV2")) return @"D:\TRIOV2";
+    if (Directory.Exists(@"D:\TRIO2026")) return @"D:\TRIO2026";
 
-    throw new DirectoryNotFoundException("找不到 TRIO2026.sln 所在目錄");
+    throw new DirectoryNotFoundException("找不到包含 Database 或方案檔的所在目錄");
 }

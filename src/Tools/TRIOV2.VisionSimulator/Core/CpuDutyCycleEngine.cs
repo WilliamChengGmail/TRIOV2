@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace TRIOV2.ResourceSimulator.Core;
+namespace TRIOV2.VisionSimulator.Core;
 
 /// <summary>
 /// 高精度微秒級 CPU Duty-Cycle 負載引擎 (支援多核心均勻調度與微秒級混合等待)
@@ -35,7 +35,7 @@ public sealed class CpuDutyCycleEngine : IDisposable
             int threadId = i;
             var thread = new Thread(() => WorkerLoop(threadId, _cts.Token))
             {
-                Name = $"ResourceSim_Worker_{threadId}",
+                Name = $"VisionSim_Worker_{threadId}",
                 IsBackground = true,
                 Priority = ThreadPriority.Normal
             };

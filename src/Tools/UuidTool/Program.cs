@@ -440,14 +440,21 @@ static string? FindSolutionRoot(string startDir)
     string? dir = startDir;
     while (dir != null)
     {
-        if (File.Exists(Path.Combine(dir, "TRIO2026.sln")))
+        if (File.Exists(Path.Combine(dir, "TRIOV2.sln")) ||
+            File.Exists(Path.Combine(dir, "TRIO2026.sln")) ||
+            Directory.Exists(Path.Combine(dir, "Database")))
+        {
             return dir;
+        }
         dir = Directory.GetParent(dir)?.FullName;
     }
 
     string candidate = Path.GetFullPath(Path.Combine(startDir, "..", "..", "..", ".."));
-    if (File.Exists(Path.Combine(candidate, "TRIO2026.sln")))
+    if (File.Exists(Path.Combine(candidate, "TRIOV2.sln")) || File.Exists(Path.Combine(candidate, "TRIO2026.sln")))
         return candidate;
+
+    if (Directory.Exists(@"D:\TRIOV2")) return @"D:\TRIOV2";
+    if (Directory.Exists(@"D:\TRIO2026")) return @"D:\TRIO2026";
 
     return null;
 }

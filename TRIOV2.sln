@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -24,6 +24,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TRIOV2.ResourceSimulator", "src\Tools\TRIOV2.ResourceSimulator\TRIOV2.ResourceSimulator.csproj", "{45F3E20F-EABD-4576-B69E-87644931D4C0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TRIOV2.DbIoSimulator", "src\Tools\TRIOV2.DbIoSimulator\TRIOV2.DbIoSimulator.csproj", "{6DC67703-5DEA-4691-93E2-E6E265A89ACA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tools", "Tools", "{D0BD60C2-3929-4741-B697-80CE8001E421}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TRIOV2.VisionSimulator", "src\Tools\TRIOV2.VisionSimulator\TRIOV2.VisionSimulator.csproj", "{9A45FA0F-B774-47C1-9470-60C650DA447F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -143,6 +147,18 @@ Global
 		{6DC67703-5DEA-4691-93E2-E6E265A89ACA}.Release|x64.Build.0 = Release|x64
 		{6DC67703-5DEA-4691-93E2-E6E265A89ACA}.Release|x86.ActiveCfg = Release|x64
 		{6DC67703-5DEA-4691-93E2-E6E265A89ACA}.Release|x86.Build.0 = Release|x64
+		{9A45FA0F-B774-47C1-9470-60C650DA447F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9A45FA0F-B774-47C1-9470-60C650DA447F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9A45FA0F-B774-47C1-9470-60C650DA447F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{9A45FA0F-B774-47C1-9470-60C650DA447F}.Debug|x64.Build.0 = Debug|Any CPU
+		{9A45FA0F-B774-47C1-9470-60C650DA447F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{9A45FA0F-B774-47C1-9470-60C650DA447F}.Debug|x86.Build.0 = Debug|Any CPU
+		{9A45FA0F-B774-47C1-9470-60C650DA447F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9A45FA0F-B774-47C1-9470-60C650DA447F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9A45FA0F-B774-47C1-9470-60C650DA447F}.Release|x64.ActiveCfg = Release|Any CPU
+		{9A45FA0F-B774-47C1-9470-60C650DA447F}.Release|x64.Build.0 = Release|Any CPU
+		{9A45FA0F-B774-47C1-9470-60C650DA447F}.Release|x86.ActiveCfg = Release|Any CPU
+		{9A45FA0F-B774-47C1-9470-60C650DA447F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -158,5 +174,6 @@ Global
 		{3143EB8C-AC20-4C99-B46E-D6792048145E} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{45F3E20F-EABD-4576-B69E-87644931D4C0} = {5395DC18-37A0-404F-895E-A13D9FFECABA}
 		{6DC67703-5DEA-4691-93E2-E6E265A89ACA} = {5395DC18-37A0-404F-895E-A13D9FFECABA}
+		{9A45FA0F-B774-47C1-9470-60C650DA447F} = {D0BD60C2-3929-4741-B697-80CE8001E421}
 	EndGlobalSection
 EndGlobal

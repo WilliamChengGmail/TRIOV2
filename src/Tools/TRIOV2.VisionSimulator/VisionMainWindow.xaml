@@ -1,0 +1,318 @@
+<Window x:Class="TRIOV2.VisionSimulator.VisionMainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:TRIOV2.VisionSimulator.ViewModels"
+        mc:Ignorable="d"
+        Title="TRIO V2 模擬拍圖辨識器 (Vision Workload Simulator)"
+        Height="590" Width="680"
+        MinHeight="540" MinWidth="600"
+        Background="#121212"
+        Foreground="#EEEEEE"
+        Topmost="{Binding IsAlwaysOnTop}"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.DataContext>
+        <vm:VisionSimulatorViewModel/>
+    </Window.DataContext>
+
+    <Window.Resources>
+        <!-- 深色卡片樣式 -->
+        <Style x:Key="CardBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="#1C1C1C"/>
+            <Setter Property="BorderBrush" Value="#2A2A2A"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="14"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <!-- 滑桿樣式微調 -->
+        <Style TargetType="Slider">
+            <Setter Property="Foreground" Value="#00BCF9"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- 現代按鈕樣式 -->
+        <Style x:Key="ModernBtn" TargetType="Button">
+            <Setter Property="Background" Value="#2A2A2A"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#3D3D3D"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#383838"/>
+                    <Setter Property="BorderBrush" Value="#00BCF9"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#007ACC"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.4"/>
+                    <Setter Property="Cursor" Value="No"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 醒目主行動拍圖按鈕 -->
+        <Style x:Key="AccentActionBtn" TargetType="Button" BasedOn="{StaticResource ModernBtn}">
+            <Setter Property="Background" Value="#0078D4"/>
+            <Setter Property="BorderBrush" Value="#0090FF"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="18,8"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1084E3"/>
+                    <Setter Property="BorderBrush" Value="#40B0FF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 停止按鈕 (暗紅底) -->
+        <Style x:Key="StopBtn" TargetType="Button" BasedOn="{StaticResource ModernBtn}">
+            <Setter Property="Background" Value="#552222"/>
+            <Setter Property="BorderBrush" Value="#883333"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#772B2B"/>
+                    <Setter Property="BorderBrush" Value="#AA4444"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- RadioButton 樣式 -->
+        <Style TargetType="RadioButton">
+            <Setter Property="Foreground" Value="#DDDDDD"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="0,0,16,0"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <!-- 頂部標題與狀態燈號列 -->
+            <RowDefinition Height="Auto"/>
+            <!-- 主要設定卡片區 (ScrollViewer) -->
+            <RowDefinition Height="*"/>
+            <!-- 底部即時狀態指示列 -->
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ═══════════════ 頂部標題與即時燈號列 ═══════════════ -->
+        <Grid Grid.Row="0" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 標題 -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="📸" FontSize="20" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="TRIO V2 模擬拍圖辨識器" FontSize="16" FontWeight="Bold" Foreground="#FFFFFF"/>
+                    <TextBlock Text="Vision Workload &amp; Inference Duty-Cycle Injector" FontSize="10" Foreground="#888888"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- 運作燈號與拍圖累計次數 -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <!-- 拍圖累計計數器 -->
+                <Border Background="#1F2833" BorderBrush="#35495E" BorderThickness="1" CornerRadius="4" Padding="8,3" Margin="0,0,10,0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="累計拍圖: " Foreground="#8AD4F5" FontSize="11" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding ShotCount}" Foreground="#00BCF9" FontWeight="Bold" FontSize="12" VerticalAlignment="Center" Margin="2,0,6,0"/>
+                        <Button Style="{StaticResource ModernBtn}" Content="↺" Command="{Binding ResetCountCommand}"
+                                Padding="4,1" FontSize="10" ToolTip="重設拍圖次數"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- 即時運作狀態徽章 -->
+                <Border Background="#222222" BorderBrush="#3D3D3D" BorderThickness="1" CornerRadius="4" Padding="10,4" Margin="0,0,10,0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Ellipse Width="10" Height="10" Fill="{Binding CameraIndicatorColor}" Margin="0,0,6,0"/>
+                        <TextBlock Text="{Binding CameraIndicatorText}" Foreground="#FFFFFF" FontSize="11" FontWeight="SemiBold"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- 視窗置頂勾選 -->
+                <CheckBox Content="📌 置頂" IsChecked="{Binding IsAlwaysOnTop}"
+                          Foreground="#AAAAAA" FontSize="11" VerticalAlignment="Center" Cursor="Hand"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- ═══════════════ 主要設定卡片區 ═══════════════ -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <!-- 卡片一：運作模式與觸發控制 -->
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <StackPanel>
+                        <TextBlock Text="1. 運作模式與觸發控制" Foreground="#00BCF9" FontWeight="Bold" FontSize="13" Margin="0,0,0,10"/>
+
+                        <!-- 模式切換 -->
+                        <WrapPanel Margin="0,0,0,12">
+                            <RadioButton Content="單次拍圖辨識 (Single-Shot)" IsChecked="{Binding IsSingleShotMode}"/>
+                            <RadioButton Content="週期連續排程 (Periodic)" IsChecked="{Binding IsPeriodicMode}"/>
+                            <RadioButton Content="極限連續高壓 (Continuous)" IsChecked="{Binding IsContinuousMode}"/>
+                        </WrapPanel>
+
+                        <Separator Background="#2A2A2A" Margin="0,0,0,12"/>
+
+                        <!-- 操作按鈕列 -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 單次拍圖按鈕 -->
+                            <Button Grid.Column="0" Style="{StaticResource AccentActionBtn}"
+                                    Content="📸 模擬拍圖並執行辨識"
+                                    Command="{Binding TriggerSingleShotCommand}"
+                                    ToolTip="立即分配影像記憶體並驅動 CPU 模擬推論運算"/>
+
+                            <!-- 週期與連續控制按鈕 -->
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Style="{StaticResource ModernBtn}" Content="▶ 啟動排程"
+                                        Command="{Binding StartPeriodicCommand}"
+                                        Margin="0,0,8,0" ToolTip="依照週期秒數持續自動拍圖"/>
+                                <Button Style="{StaticResource StopBtn}" Content="⏹ 停止"
+                                        Command="{Binding StopCommand}"
+                                        ToolTip="停止所有推論運算並釋放負載回待機狀態"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 卡片二：負載參數動態微調 -->
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <StackPanel>
+                        <TextBlock Text="2. 模擬負載參數微調" Foreground="#00BCF9" FontWeight="Bold" FontSize="13" Margin="0,0,0,10"/>
+
+                        <!-- CPU 目標佔用 -->
+                        <Grid Margin="0,0,0,8">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0" Margin="0,0,0,4">
+                                <TextBlock Text="CPU 目標佔用率 (全核心微秒級調度)" Foreground="#CCCCCC" FontSize="12"/>
+                                <TextBlock Text="{Binding TargetCpuPercent, StringFormat='{}{0:0} %'}"
+                                           Foreground="#00BCF9" FontWeight="Bold" FontSize="12" HorizontalAlignment="Right"/>
+                            </Grid>
+                            <Slider Grid.Row="1" Minimum="1" Maximum="100" Value="{Binding TargetCpuPercent, Mode=TwoWay}"
+                                    SmallChange="1" LargeChange="5" TickFrequency="10" IsSnapToTickEnabled="False"/>
+                        </Grid>
+
+                        <!-- 影像緩衝記憶體 -->
+                        <Grid Margin="0,0,0,8">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0" Margin="0,0,0,4">
+                                <TextBlock Text="影像緩衝實體記憶體配置 (RAM)" Foreground="#CCCCCC" FontSize="12"/>
+                                <TextBlock Text="{Binding TargetMemoryMb, StringFormat='{}{0} MB'}"
+                                           Foreground="#9B59B6" FontWeight="Bold" FontSize="12" HorizontalAlignment="Right"/>
+                            </Grid>
+                            <Slider Grid.Row="1" Minimum="50" Maximum="4096" Value="{Binding TargetMemoryMb, Mode=TwoWay}"
+                                    SmallChange="10" LargeChange="100" TickFrequency="256" IsSnapToTickEnabled="False"/>
+                        </Grid>
+
+                        <!-- 辨識運算時長 -->
+                        <Grid Margin="0,0,0,8">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0" Margin="0,0,0,4">
+                                <TextBlock Text="單次辨識推論時長 (Inference Duration)" Foreground="#CCCCCC" FontSize="12"/>
+                                <TextBlock Text="{Binding InferenceDurationMs, StringFormat='{}{0} ms'}"
+                                           Foreground="#2ECC71" FontWeight="Bold" FontSize="12" HorizontalAlignment="Right"/>
+                            </Grid>
+                            <Slider Grid.Row="1" Minimum="100" Maximum="3000" Value="{Binding InferenceDurationMs, Mode=TwoWay}"
+                                    SmallChange="50" LargeChange="200"/>
+                        </Grid>
+
+                        <!-- 週期排程間隔 -->
+                        <Grid Margin="0,0,0,4">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0" Margin="0,0,0,4">
+                                <TextBlock Text="週期模式間隔時間 (Interval)" Foreground="#CCCCCC" FontSize="12"/>
+                                <TextBlock Text="{Binding PeriodicIntervalSeconds, StringFormat='{}{0} 秒'}"
+                                           Foreground="#E67E22" FontWeight="Bold" FontSize="12" HorizontalAlignment="Right"/>
+                            </Grid>
+                            <Slider Grid.Row="1" Minimum="1" Maximum="30" Value="{Binding PeriodicIntervalSeconds, Mode=TwoWay}"
+                                    SmallChange="1" LargeChange="5"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 卡片三：快速預設情境 -->
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="3. 快速預設情境" Foreground="#00BCF9" FontWeight="Bold" FontSize="13" Margin="0,0,0,2"/>
+                            <TextBlock Text="一鍵帶入常見檢測負載配置" Foreground="#888888" FontSize="11"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Style="{StaticResource ModernBtn}" Content="大陸基準 (15%/270MB/800ms)"
+                                    Command="{Binding ApplyPresetBaselineCommand}" Margin="0,0,6,0"
+                                    ToolTip="i7-9700K 15% 基準負載"/>
+                            <Button Style="{StaticResource ModernBtn}" Content="輕量 (8%/100MB/400ms)"
+                                    Command="{Binding ApplyPresetLowCommand}" Margin="0,0,6,0"/>
+                            <Button Style="{StaticResource ModernBtn}" Content="高壓 (35%/1GB/1.5s)"
+                                    Command="{Binding ApplyPresetHighCommand}"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ═══════════════ 底部即時狀態指示列 ═══════════════ -->
+        <Border Grid.Row="2" Style="{StaticResource CardBorderStyle}" Margin="0,6,0,0" Padding="10,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="狀態指示: " Foreground="#888888" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBlock Grid.Column="1" Text="{Binding StatusText}" Foreground="#FFFFFF" FontSize="11" FontWeight="SemiBold"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Column="2" Text="Office of William" Foreground="#555555" FontSize="10" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
+

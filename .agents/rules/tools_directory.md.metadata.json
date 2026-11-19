@@ -1,0 +1,11 @@
+{
+  "version": "1.1.0",
+  "last_modified": "2026-11-19T14:46:00+08:00",
+  "author": "Office of William",
+  "project": "TRIOV2",
+  "status": "Active",
+  "file_type": "rule",
+  "target_os": "Windows 10 / Windows 11 Pro IoT Enterprise",
+  "target_tool": "Tools, src/Tools",
+  "update_notes": "全面修訂：明確 Tools 不受版控、允許根目錄批次檔捷徑、區隔執行組件封閉與業務資料操作、簡化單檔工具相依清單要求、精簡排除 pdb，並將範例改為 C# 實例。"
+}

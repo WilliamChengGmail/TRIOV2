@@ -1,4 +1,4 @@
-namespace TRIOV2.ResourceSimulator.Core;
+namespace TRIOV2.VisionSimulator.Core;
 
 /// <summary>
 /// 記憶體與匯流排壓力引擎 (分塊架構，支援 50MB ~ 8192MB，無 2GB 陣列溢位限制，具備 OOM 熔斷保護)
@@ -121,3 +121,4 @@ public sealed class MemoryPressureEngine : IDisposable
         }
     }
 }
+
