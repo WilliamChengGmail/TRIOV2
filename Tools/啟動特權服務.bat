@@ -1,7 +1,8 @@
 @echo off
 chcp 65001 >nul
+title TRIOV2 PrivilegedService (Console Mode)
 echo ==================================================
-echo   TRIO2026 PrivilegedService (Console Mode)
+echo   TRIOV2 PrivilegedService (Console Mode)
 echo   ** Run this as ADMINISTRATOR **
 echo ==================================================
 echo.
@@ -21,5 +22,10 @@ echo [INFO] Named Pipe: TRIO2026_PrivilegedService
 echo [INFO] Press Ctrl+C to stop
 echo.
 
-dotnet run --project "%~dp0..\src\TRIO2026.PrivilegedService\TRIO2026.PrivilegedService.csproj"
+if exist "%~dp0PrivilegedService\TRIOV2.PrivilegedService.exe" (
+    cd /d "%~dp0PrivilegedService"
+    "TRIOV2.PrivilegedService.exe" %*
+) else (
+    dotnet run --project "%~dp0..\src\TRIOV2.PrivilegedService\TRIOV2.PrivilegedService.csproj" -- %*
+)
 pause

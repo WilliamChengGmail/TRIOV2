@@ -1,7 +1,18 @@
 // 檢查 + 補齊 config.db 中的 app_close 與 auth 設定
 using Microsoft.Data.Sqlite;
 
-var dbPath = @"D:\TRIO2026\Database\trio240plus_config.db";
+var dbPath = FindDatabasePath("config.db");
+if (string.IsNullOrEmpty(dbPath) || !File.Exists(dbPath))
+{
+    dbPath = FindDatabasePath("trio240plus_config.db");
+}
+if (string.IsNullOrEmpty(dbPath) || !File.Exists(dbPath))
+{
+    Console.ForegroundColor = ConsoleColor.Red;
+    Console.WriteLine("找不到 config.db 或 trio240plus_config.db，請確認資料庫目錄存在。");
+    Console.ResetColor();
+    return;
+}
 Console.WriteLine($"目標: {dbPath}\n");
 
 using var conn = new SqliteConnection($"Data Source={dbPath}");
@@ -54,3 +65,25 @@ using (var cmd = conn.CreateCommand())
 }
 conn.Close();
 Console.WriteLine("\n完成!");
+
+static string FindDatabasePath(string dbName)
+{
+    var currentDir = new DirectoryInfo(AppContext.BaseDirectory);
+    while (currentDir != null)
+    {
+        var p1 = Path.Combine(currentDir.FullName, "Database", dbName);
+        if (File.Exists(p1)) return p1;
+        var p2 = Path.Combine(currentDir.FullName, "App", "Database", dbName);
+        if (File.Exists(p2)) return p2;
+        currentDir = currentDir.Parent;
+    }
+
+    string[] fallbacks = { @"D:\TRIOV2\Database", @"D:\TRIO2026\Database" };
+    foreach (var fb in fallbacks)
+    {
+        var p = Path.Combine(fb, dbName);
+        if (File.Exists(p)) return p;
+    }
+
+    return "";
+}

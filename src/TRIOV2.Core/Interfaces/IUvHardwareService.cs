@@ -25,6 +25,12 @@ public interface IUvHardwareService
     /// <summary>主動查詢當前門板狀態（true=開啟, false=關閉）</summary>
     bool IsDoorOpen { get; }
 
+    /// <summary>UV 燈是否點亮中</summary>
+    bool IsUvRunning { get; }
+
+    /// <summary>更新當前倒數剩餘秒數（供硬體模擬或狀態同步）</summary>
+    void UpdateRemainingSeconds(int remainingSeconds);
+
     /// <summary>門板開啟事件（底層 sensor 中斷通知 UI）</summary>
     event EventHandler? DoorOpened;
 

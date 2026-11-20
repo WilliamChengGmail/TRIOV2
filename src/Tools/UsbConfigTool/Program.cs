@@ -17,19 +17,16 @@ class Program
         Console.WriteLine("= 作者: Office of William                    =");
         Console.WriteLine("==============================================");
 
-        string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-        // 開發環境中：目前在 tools/UsbConfigTool/bin/Debug/net8.0/
-        // 要退回 src 同層的 Database/system_config.db
-        _dbPath = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "..", "Database", "system_config.db"));
+        _dbPath = FindDatabasePath("system_config.db");
 
-        if (!File.Exists(_dbPath))
+        if (string.IsNullOrEmpty(_dbPath) || !File.Exists(_dbPath))
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"[錯誤] 找不到資料庫檔案: {_dbPath}");
-            Console.WriteLine("請確認 TRIO2026 應用程式是否已至少執行過一次以初始化資料庫。");
+            Console.WriteLine($"[錯誤] 找不到資料庫檔案: system_config.db");
+            Console.WriteLine("請確認 TRIOV2 應用程式是否已至少執行過一次以初始化資料庫。");
             Console.ResetColor();
             Console.WriteLine("按任意鍵退出...");
-            Console.ReadKey();
+            try { Console.ReadKey(); } catch { }
             return;
         }
 
@@ -142,5 +139,27 @@ class Program
             Console.WriteLine($"[例外] 寫入資料庫發生錯誤: {ex.Message}");
             Console.ResetColor();
         }
+    }
+
+    private static string FindDatabasePath(string dbName)
+    {
+        var currentDir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (currentDir != null)
+        {
+            var p1 = Path.Combine(currentDir.FullName, "Database", dbName);
+            if (File.Exists(p1)) return p1;
+            var p2 = Path.Combine(currentDir.FullName, "App", "Database", dbName);
+            if (File.Exists(p2)) return p2;
+            currentDir = currentDir.Parent;
+        }
+
+        string[] fallbacks = { @"D:\TRIOV2\Database", @"D:\TRIO2026\Database" };
+        foreach (var fb in fallbacks)
+        {
+            var p = Path.Combine(fb, dbName);
+            if (File.Exists(p)) return p;
+        }
+
+        return "";
     }
 }

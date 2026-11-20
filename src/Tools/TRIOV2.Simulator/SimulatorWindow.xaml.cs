@@ -98,6 +98,18 @@ public partial class SimulatorWindow : Window
             using var stream = client.GetStream();
             using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
 
+            // ── 握手狀態同步 (Handshake) ──
+            // 1. 向剛連線的 Client 同步當前模擬器門板狀態
+            var doorSyncJson = $"{{\"Event\": \"SyncDoor\", \"IsDoorOpen\": {(_isDoorOpen ? "true" : "false")}}}\n";
+            var doorBytes = Encoding.UTF8.GetBytes(doorSyncJson);
+            await stream.WriteAsync(doorBytes, 0, doorBytes.Length, ct);
+
+            // 2. 主動向 Client 查詢當前狀態（若 App 已經在照射 UV，App 會立即補送 StartUV 與剩餘秒數）
+            var queryJson = "{\"Event\": \"QueryStatus\"}\n";
+            var queryBytes = Encoding.UTF8.GetBytes(queryJson);
+            await stream.WriteAsync(queryBytes, 0, queryBytes.Length, ct);
+            await stream.FlushAsync(ct);
+
             while (client.Connected && !ct.IsCancellationRequested)
             {
                 var line = await reader.ReadLineAsync(ct);
@@ -137,18 +149,37 @@ public partial class SimulatorWindow : Window
                     case "StartUV":
                         _isUvOn = true;
                         _isUvPaused = false;
+                        if (doc.RootElement.TryGetProperty("IsPaused", out var pausedProp))
+                            _isUvPaused = pausedProp.GetBoolean();
+
                         // 解析 Duration
                         _uvRemainingSeconds = 0;
                         if (doc.RootElement.TryGetProperty("Duration", out var durProp))
                             _uvRemainingSeconds = durProp.GetInt32();
-                        AddLog($"📥 UV Duration = {_uvRemainingSeconds}s");
+
+                        AddLog($"📥 UV 狀態同步: 照射中, 剩餘={_uvRemainingSeconds}s (Paused={_isUvPaused})");
                         // DispatcherTimer 必須在 UI 執行緒建立
-                        Dispatcher.Invoke(() => { StartUvCountdown(); UpdateUvStatus(); });
+                        Dispatcher.Invoke(() =>
+                        {
+                            if (!_isUvPaused && _uvRemainingSeconds > 0)
+                                StartUvCountdown();
+                            else
+                                StopUvCountdown();
+                            UpdateUvStatus();
+                        });
                         break;
+
                     case "StopUV":
                         _isUvOn = false;
                         _isUvPaused = false;
+                        _uvRemainingSeconds = 0;
+                        AddLog("📥 UV 狀態同步: 關閉");
                         Dispatcher.Invoke(() => { StopUvCountdown(); UpdateUvStatus(); });
+                        break;
+
+                    case "QueryDoor":
+                        AddLog("📥 收到門板狀態查詢，回覆 SyncDoor");
+                        _ = BroadcastEventAsync("SyncDoor", $"\"IsDoorOpen\": {(_isDoorOpen ? "true" : "false")}");
                         break;
                 }
             }
@@ -193,9 +224,11 @@ public partial class SimulatorWindow : Window
     }
 
     /// <summary>廣播事件給所有已連線的 Client</summary>
-    private async Task BroadcastEventAsync(string eventName)
+    private async Task BroadcastEventAsync(string eventName, string? extraJson = null)
     {
-        var json = $"{{\"Event\": \"{eventName}\"}}\n";
+        var json = extraJson != null
+            ? $"{{\"Event\": \"{eventName}\", {extraJson}}}\n"
+            : $"{{\"Event\": \"{eventName}\"}}\n";
         var bytes = Encoding.UTF8.GetBytes(json);
 
         List<TcpClient> snapshot;

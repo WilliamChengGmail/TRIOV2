@@ -343,6 +343,7 @@ public class UvDecontaminationViewModel : ViewModelBase
     private async void OnTimerTick(object? sender, EventArgs e)
     {
         RemainingSeconds--;
+        _hardwareService.UpdateRemainingSeconds(RemainingSeconds);
 
         if (RemainingSeconds <= 0)
         {

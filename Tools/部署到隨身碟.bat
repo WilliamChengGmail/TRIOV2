@@ -1,82 +1,130 @@
 @echo off
 chcp 65001 >nul
-title TRIO2026 部署打包工具
+title TRIOV2 Deploy to USB Tool
 
 :: ====================================================
-:: TRIO2026 部署打包工具
-:: 用途：將 App + Service + Database 打包到隨身碟
-:: 製作者: Office of William
+:: TRIOV2 USB Deployment Packager
+:: Package App + PrivilegedService + Database to USB
+:: Author: Office of William
 :: ====================================================
 
-:: 偵測隨身碟
+echo ==================================================
+echo   TRIOV2 Deploy to USB Tool
+echo ==================================================
+echo.
+
+:: Detect USB drive (DriveType=2: Removable)
 set USB_DRIVE=
 for /f "tokens=1" %%d in ('wmic logicaldisk where "DriveType=2" get DeviceID /value 2^>nul ^| findstr "="') do (
     for /f "tokens=2 delims==" %%v in ("%%d") do set USB_DRIVE=%%v
 )
 
 if "%USB_DRIVE%"=="" (
-    echo [錯誤] 未偵測到隨身碟，請插入後重試
+    echo [INFO] No removable drive detected automatically.
+    set /p USB_DRIVE="Please enter USB drive letter (e.g. E: or Q to quit): "
+)
+
+if /i "%USB_DRIVE%"=="Q" exit /b 0
+
+if "%USB_DRIVE%"=="" (
+    echo [ERROR] USB drive not specified. Exiting...
     pause
     exit /b 1
 )
 
-echo ============================================
-echo   TRIO2026 部署打包
-echo   目標: %USB_DRIVE%\TRIO2026_Deploy
-echo ============================================
-echo.
+if "%USB_DRIVE:~-1%"=="\" set USB_DRIVE=%USB_DRIVE:~0,-1%
+if not exist "%USB_DRIVE%\" (
+    echo [ERROR] Cannot find drive %USB_DRIVE%\. Please make sure USB drive is plugged in.
+    pause
+    exit /b 1
+)
 
-set DEPLOY_DIR=%USB_DRIVE%\TRIO2026_Deploy
+echo [OK] Target USB Drive: %USB_DRIVE%\
+set DEPLOY_DIR=%USB_DRIVE%\TRIOV2_Deploy
 set PROJECT_ROOT=%~dp0..
 
-:: 清除舊部署
+echo [OK] Target Directory: %DEPLOY_DIR%
+echo.
+
+:: Step 1: Clean old deploy directory
 if exist "%DEPLOY_DIR%" (
-    echo [1/5] 清除舊部署...
+    echo [1/5] Cleaning old deployment directory...
     rmdir /s /q "%DEPLOY_DIR%"
 )
 
-:: 發布 App
-echo [2/5] 發布 TRIO2026.App (Release)...
-dotnet publish "%PROJECT_ROOT%\src\TRIO2026.App\TRIO2026.App.csproj" -c Release -r win-x64 --self-contained true -o "%DEPLOY_DIR%\App" >nul 2>&1
+:: Step 2: Publish TRIOV2.App (self-contained)
+echo [2/5] Publishing TRIOV2.App (Release, win-x64, self-contained)...
+dotnet publish "%PROJECT_ROOT%\src\TRIOV2.App\TRIOV2.App.csproj" -c Release -r win-x64 --self-contained true -o "%DEPLOY_DIR%\App"
 if errorlevel 1 (
-    echo [錯誤] App 發布失敗
+    echo.
+    echo [ERROR] Failed to publish TRIOV2.App!
     pause
     exit /b 1
 )
-echo       完成
+echo       Done.
 
-:: 發布 PrivilegedService
-echo [3/5] 發布 PrivilegedService (Release)...
-dotnet publish "%PROJECT_ROOT%\src\TRIO2026.PrivilegedService\TRIO2026.PrivilegedService.csproj" -c Release -r win-x64 --self-contained true -o "%DEPLOY_DIR%\Service" >nul 2>&1
+:: Step 3: Publish TRIOV2.PrivilegedService (self-contained)
+echo [3/5] Publishing TRIOV2.PrivilegedService (Release, win-x64, self-contained)...
+dotnet publish "%PROJECT_ROOT%\src\TRIOV2.PrivilegedService\TRIOV2.PrivilegedService.csproj" -c Release -r win-x64 --self-contained true -o "%DEPLOY_DIR%\Service"
 if errorlevel 1 (
-    echo [錯誤] Service 發布失敗
+    echo.
+    echo [ERROR] Failed to publish TRIOV2.PrivilegedService!
     pause
     exit /b 1
 )
-echo       完成
+echo       Done.
 
-:: 複製資料庫
-echo [4/5] 複製資料庫...
+:: Step 4: Copy default databases
+echo [4/5] Copying system databases to App\Database...
 mkdir "%DEPLOY_DIR%\App\Database" 2>nul
 copy /y "%PROJECT_ROOT%\Database\*.db" "%DEPLOY_DIR%\App\Database\" >nul
-echo       完成
+echo       Done.
 
-:: 清理非 Windows runtimes
-echo [5/5] 清理非 Windows 平台檔案...
+:: Step 5: Clean non-Windows runtimes
+echo [5/5] Cleaning non-Windows runtimes...
 for /d %%d in ("%DEPLOY_DIR%\App\runtimes\*") do (
-    echo %%~nxd | findstr /i "^win" >nul || rmdir /s /q "%%d"
+    echo %%~nxd | findstr /i "^win" >nul || rmdir /s /q "%%d" 2>nul
 )
-echo       完成
+for /d %%d in ("%DEPLOY_DIR%\Service\runtimes\*") do (
+    echo %%~nxd | findstr /i "^win" >nul || rmdir /s /q "%%d" 2>nul
+)
+echo       Done.
 
-:: 計算大小
-set /a TOTAL=0
-for /r "%DEPLOY_DIR%" %%f in (*) do set /a TOTAL+=%%~zf 2>nul
+:: Create launchers on USB drive
+echo Creating launcher scripts on USB root...
+(
+    echo @echo off
+    echo chcp 65001 ^>nul
+    echo title TRIOV2 App Launcher
+    echo cd /d "%%~dp0App"
+    echo start "" "TRIOV2.App.exe"
+) > "%DEPLOY_DIR%\StartTRIOV2.bat"
+
+(
+    echo @echo off
+    echo chcp 65001 ^>nul
+    echo title TRIOV2 PrivilegedService ^(Console Mode^)
+    echo net session ^>nul 2^>^&1
+    echo if %%ERRORLEVEL%% neq 0 ^(
+    echo     echo [ERROR] Please run as Administrator!
+    echo     pause
+    echo     exit /b 1
+    echo ^)
+    echo cd /d "%%~dp0Service"
+    echo "TRIOV2.PrivilegedService.exe"
+    echo pause
+) > "%DEPLOY_DIR%\StartPrivilegedService.bat"
+
+echo       Done.
 
 echo.
-echo ============================================
-echo   部署完成！
-echo   路徑: %DEPLOY_DIR%
-echo   啟動: %DEPLOY_DIR%\App\TRIO2026.App.exe
-echo ============================================
+echo ==================================================
+echo   Deployment Successful!
+echo   Location: %DEPLOY_DIR%
+echo.
+echo   How to run on target machine:
+echo   1. Run %DEPLOY_DIR%\StartPrivilegedService.bat (As Admin)
+echo   2. Run %DEPLOY_DIR%\StartTRIOV2.bat
+echo ==================================================
 echo.
 pause
