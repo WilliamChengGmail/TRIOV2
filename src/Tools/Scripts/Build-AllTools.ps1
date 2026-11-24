@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     TRIOV2 工具套件一鍵自包含（Self-Contained）發佈腳本
 .DESCRIPTION
