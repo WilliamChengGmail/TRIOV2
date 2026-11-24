@@ -41,11 +41,14 @@ public record PerformanceSessionStats(
 );
 
 /// <summary>
-/// 區間效能量測記錄器 (追蹤指定時間區間內 CPU 與記憶體之最高/最低/平均值，並保存每筆樣本之詳細 Log)
+/// 區間效能量測記錄器 (串流分批寫入磁碟，維持增量純量統計，杜絕記憶體累積與 Memory Swap)
 /// 製作者: Office of William
 /// </summary>
 public sealed class PerformanceSessionRecorder
 {
+    private const string CsvHeader = "樣本序號,時間戳記,全系統CPU(%),模擬器CPU(%),剩餘空閒CPU(%),已用記憶體(GB),可用記憶體(GB),記憶體使用率(%),模擬影像緩衝(MB),底層辨識狀態,辨識運算時長(ms),運作模式";
+    private const int FlushBatchSize = 20; // 每累積 20 筆樣本批次寫入一次，兼顧磁碟 I/O 效能與即時落盤
+
     private readonly object _lock = new();
     private bool _isRecording;
     private DateTime _startTime;
@@ -64,24 +67,16 @@ public sealed class PerformanceSessionRecorder
     private float _memPercentMin = float.MaxValue;
     private double _memPercentSum;
 
-    private readonly List<DetailedSampleRecord> _samples = new();
+    private string _currentLogFilePath = string.Empty;
+    private readonly List<string> _buffer = new(FlushBatchSize);
 
     public bool IsRecording => _isRecording;
-    public IReadOnlyList<DetailedSampleRecord> Samples
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _samples.ToList();
-            }
-        }
-    }
+    public string CurrentLogFilePath => _currentLogFilePath;
 
     /// <summary>
-    /// 開始新的區間量測紀錄 (重置所有統計計數器與樣本清單)
+    /// 開始新的區間量測紀錄 (重置所有統計計數器與緩衝區，並預先建立 CSV 檔案與表頭)
     /// </summary>
-    public void Start()
+    public string Start(string? targetDir = null, string? customFileName = null)
     {
         lock (_lock)
         {
@@ -98,14 +93,33 @@ public sealed class PerformanceSessionRecorder
             _memPercentMax = 0f;
             _memPercentMin = float.MaxValue;
             _memPercentSum = 0;
-            _samples.Clear();
+            _buffer.Clear();
+
+            targetDir ??= Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+            Directory.CreateDirectory(targetDir);
+
+            string fileName = !string.IsNullOrWhiteSpace(customFileName)
+                ? customFileName
+                : $"BenchmarkLog_{_startTime:yyyyMMdd_HHmmss}.csv";
+            _currentLogFilePath = Path.Combine(targetDir, fileName);
+
+            try
+            {
+                File.WriteAllText(_currentLogFilePath, CsvHeader + Environment.NewLine, Encoding.UTF8);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PerformanceSessionRecorder] Init CSV error: {ex.Message}");
+            }
+
+            return _currentLogFilePath;
         }
     }
 
     /// <summary>
-    /// 停止紀錄並結算區間統計
+    /// 停止紀錄並結算區間統計，同時 Flush 剩餘緩衝並於 CSV 檔案尾端追加統計摘要區塊
     /// </summary>
-    public void Stop()
+    public string Stop()
     {
         lock (_lock)
         {
@@ -114,11 +128,46 @@ public sealed class PerformanceSessionRecorder
                 _isRecording = false;
                 _endTime = DateTime.Now;
             }
+
+            // 1. 將剩餘未寫入之緩衝刷入磁碟
+            FlushBufferCore();
+
+            // 2. 追加統計摘要結尾區塊
+            if (!string.IsNullOrEmpty(_currentLogFilePath) && File.Exists(_currentLogFilePath))
+            {
+                var stats = GetStats();
+                var sb = new StringBuilder();
+                sb.AppendLine();
+                sb.AppendLine("# ========================================================");
+                sb.AppendLine($"# 【TRIOV2 區間效能量測統計摘要】");
+                sb.AppendLine($"# 量測開始時間: {_startTime:yyyy-MM-dd HH:mm:ss}");
+                sb.AppendLine($"# 量測結束時間: {_endTime:yyyy-MM-dd HH:mm:ss}");
+                sb.AppendLine($"# 總樣本筆數: {stats.SampleCount} 筆");
+
+                string durationStr = stats.Duration.TotalHours >= 1
+                    ? $"{(int)stats.Duration.TotalHours:00}:{stats.Duration.Minutes:00}:{stats.Duration.Seconds:00}"
+                    : $"{stats.Duration.Minutes:00}:{stats.Duration.Seconds:00}";
+                sb.AppendLine($"# 總紀錄時長: {durationStr}");
+                sb.AppendLine($"# CPU 使用率: 最高 {stats.CpuMax:0.0} %, 最低 {stats.CpuMin:0.0} %, 平均 {stats.CpuAvg:0.0} %");
+                sb.AppendLine($"# 記憶體使用量: 最高 {stats.MemoryGbMax:0.00} GB ({stats.MemoryPercentMax:0}%), 最低 {stats.MemoryGbMin:0.00} GB ({stats.MemoryPercentMin:0}%), 平均 {stats.MemoryGbAvg:0.00} GB ({stats.MemoryPercentAvg:0}%)");
+                sb.AppendLine("# ========================================================");
+
+                try
+                {
+                    File.AppendAllText(_currentLogFilePath, sb.ToString(), Encoding.UTF8);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[PerformanceSessionRecorder] Append footer error: {ex.Message}");
+                }
+            }
+
+            return _currentLogFilePath;
         }
     }
 
     /// <summary>
-    /// 1Hz 採樣滴答時傳入一筆完整樣本數據
+    /// 1Hz 採樣滴答時傳入一筆完整樣本數據 (累積純量統計，並在滿 Batch 閾值時自動寫入磁碟釋放記憶體)
     /// </summary>
     public void AddSample(
         float totalCpu,
@@ -155,27 +204,36 @@ public sealed class PerformanceSessionRecorder
             if (memPercent < _memPercentMin) _memPercentMin = memPercent;
             _memPercentSum += memPercent;
 
-            // 紀錄詳細樣本日誌
-            _samples.Add(new DetailedSampleRecord(
-                Index: _sampleCount,
-                Timestamp: _endTime,
-                TotalCpuPercent: totalCpu,
-                SimulatorCpuPercent: simulatorCpu,
-                RemainingCpuPercent: remainingCpu,
-                UsedMemoryGb: usedMemGb,
-                TotalMemoryGb: totalMemGb,
-                AvailableMemoryGb: availableMemGb,
-                MemoryUsagePercent: memPercent,
-                SimulatorMemoryMb: simulatorMemMb,
-                IsInferenceActive: isInferenceActive,
-                InferenceDurationMs: inferenceDurationMs,
-                OperatingMode: operatingMode
-            ));
+            // 格式化單行 CSV 紀錄
+            string stateText = isInferenceActive ? "辨識運算中" : "待機";
+            string line = $"{_sampleCount},{_endTime:yyyy-MM-dd HH:mm:ss},{totalCpu:0.0},{simulatorCpu:0.0},{remainingCpu:0.0},{usedMemGb:0.00},{availableMemGb:0.00},{memPercent:0},{simulatorMemMb:0},{stateText},{inferenceDurationMs},{operatingMode}";
+            _buffer.Add(line);
+
+            // 適度分批 Flush 至磁碟，並立即釋放記憶體緩衝
+            if (_buffer.Count >= FlushBatchSize)
+            {
+                FlushBufferCore();
+            }
+        }
+    }
+
+    private void FlushBufferCore()
+    {
+        if (_buffer.Count == 0 || string.IsNullOrEmpty(_currentLogFilePath)) return;
+
+        try
+        {
+            File.AppendAllLines(_currentLogFilePath, _buffer, Encoding.UTF8);
+            _buffer.Clear();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PerformanceSessionRecorder] Flush log error: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// 獲取當前統計數據
+    /// 獲取當前統計數據 (純量累加計算，不依賴歷史樣本物件)
     /// </summary>
     public PerformanceSessionStats GetStats()
     {
@@ -216,54 +274,33 @@ public sealed class PerformanceSessionRecorder
     }
 
     /// <summary>
-    /// 將本區間所有樣本輸出為 CSV 格式詳細日誌 (自動建立 Logs 目錄，含 UTF-8 BOM 支援 Excel 開啟)
+    /// 取得目前日誌檔案路徑，或另存至指定目錄 (向後相容保留介面)
     /// </summary>
     public string SaveDetailedLogToFile(string? targetDir = null, string? customFileName = null)
     {
-        List<DetailedSampleRecord> samples;
-        PerformanceSessionStats stats;
-
         lock (_lock)
         {
-            samples = _samples.ToList();
-            stats = GetStats();
+            if (string.IsNullOrEmpty(_currentLogFilePath) || !File.Exists(_currentLogFilePath))
+            {
+                return string.Empty;
+            }
+
+            if (string.IsNullOrEmpty(targetDir) && string.IsNullOrEmpty(customFileName))
+            {
+                return _currentLogFilePath;
+            }
+
+            targetDir ??= Path.GetDirectoryName(_currentLogFilePath) ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+            Directory.CreateDirectory(targetDir);
+            string fileName = !string.IsNullOrWhiteSpace(customFileName) ? customFileName : Path.GetFileName(_currentLogFilePath);
+            string destination = Path.Combine(targetDir, fileName);
+
+            if (!string.Equals(Path.GetFullPath(_currentLogFilePath), Path.GetFullPath(destination), StringComparison.OrdinalIgnoreCase))
+            {
+                File.Copy(_currentLogFilePath, destination, overwrite: true);
+            }
+
+            return destination;
         }
-
-        if (samples.Count == 0) return string.Empty;
-
-        targetDir ??= Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
-        Directory.CreateDirectory(targetDir);
-
-        string fileName = !string.IsNullOrWhiteSpace(customFileName)
-            ? customFileName
-            : $"BenchmarkLog_{_startTime:yyyyMMdd_HHmmss}.csv";
-        string filePath = Path.Combine(targetDir, fileName);
-
-        var sb = new StringBuilder();
-
-        // 標題表頭
-        sb.AppendLine("樣本序號,時間戳記,全系統CPU(%),模擬器CPU(%),剩餘空閒CPU(%),已用記憶體(GB),可用記憶體(GB),記憶體使用率(%),模擬影像緩衝(MB),底層辨識狀態,辨識運算時長(ms),運作模式");
-
-        // 樣本數據行
-        foreach (var s in samples)
-        {
-            string stateText = s.IsInferenceActive ? "辨識運算中" : "待機";
-            sb.AppendLine($"{s.Index},{s.Timestamp:yyyy-MM-dd HH:mm:ss},{s.TotalCpuPercent:0.0},{s.SimulatorCpuPercent:0.0},{s.RemainingCpuPercent:0.0},{s.UsedMemoryGb:0.00},{s.AvailableMemoryGb:0.00},{s.MemoryUsagePercent:0},{s.SimulatorMemoryMb:0},{stateText},{s.InferenceDurationMs},{s.OperatingMode}");
-        }
-
-        // 區間統計摘要結尾
-        sb.AppendLine();
-        sb.AppendLine("# ========================================================");
-        sb.AppendLine($"# 【TRIOV2 區間效能量測統計摘要】");
-        sb.AppendLine($"# 量測開始時間: {_startTime:yyyy-MM-dd HH:mm:ss}");
-        sb.AppendLine($"# 量測結束時間: {_endTime:yyyy-MM-dd HH:mm:ss}");
-        sb.AppendLine($"# 總樣本筆數: {stats.SampleCount} 筆");
-        sb.AppendLine($"# 總紀錄時長: {stats.Duration.Minutes:00}:{stats.Duration.Seconds:00}");
-        sb.AppendLine($"# CPU 使用率: 最高 {stats.CpuMax:0.0} %, 最低 {stats.CpuMin:0.0} %, 平均 {stats.CpuAvg:0.0} %");
-        sb.AppendLine($"# 記憶體使用量: 最高 {stats.MemoryGbMax:0.00} GB ({stats.MemoryPercentMax:0}%), 最低 {stats.MemoryGbMin:0.00} GB ({stats.MemoryPercentMin:0}%), 平均 {stats.MemoryGbAvg:0.00} GB ({stats.MemoryPercentAvg:0}%)");
-        sb.AppendLine("# ========================================================");
-
-        File.WriteAllText(filePath, sb.ToString(), Encoding.UTF8);
-        return filePath;
     }
 }

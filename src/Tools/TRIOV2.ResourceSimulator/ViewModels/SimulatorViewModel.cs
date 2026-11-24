@@ -569,16 +569,16 @@ public sealed class SimulatorViewModel : ViewModelBase, IDisposable
         // 鎖定紀錄期間要持續追蹤的所有目標名稱 (包含尚未啟動之額外匯入/手動指定 Task Name)
         _procWatcher.SetRecordingWatchTargets(selectedTasks.Select(x => x.ProcessName));
 
-        // 1. 啟動全系統記錄器
-        _recorder.Start();
-
-        // 2. 啟動多任務記錄器：以 yyyyMMdd_HHmmss 建立主資料夾，並立即根據每個勾選的 task name 建立各自子資料夾
+        // 1. 啟動多任務記錄器：以 yyyyMMdd_HHmmss 建立主資料夾，並立即根據每個勾選的 task name 建立各自子資料夾與初始 CSV
         string sessionDir = _multiRecorder.Start(selectedTasks);
+
+        // 2. 啟動全系統記錄器，直接串流至 sessionDir/System_BenchmarkLog.csv (分批適度寫入磁碟，釋放記憶體)
+        string systemLogPath = _recorder.Start(sessionDir, "System_BenchmarkLog.csv");
 
         IsRecording = true;
         HasRecordedStats = true;
-        LastLogFilePath = string.Empty;
-        LastLogFileName = string.Empty;
+        LastLogFilePath = systemLogPath;
+        LastLogFileName = Path.GetFileName(systemLogPath);
         OnPropertyChanged(nameof(HasLogFile));
 
         RecordingStatusBadge = selectedTasks.Count > 0
@@ -592,16 +592,12 @@ public sealed class SimulatorViewModel : ViewModelBase, IDisposable
 
     private void ExecuteStopRecording()
     {
-        _recorder.Stop();
+        string systemLogPath = _recorder.Stop();
         var writtenTaskFiles = _multiRecorder.StopAndFlush();
         _procWatcher.SetRecordingWatchTargets(null);
         IsRecording = false;
 
         var stats = _recorder.GetStats();
-
-        // 1. 全系統基準日誌儲存至工作階段目錄下
-        string sessionDir = _multiRecorder.MainSessionDirectory;
-        string systemLogPath = _recorder.SaveDetailedLogToFile(sessionDir, "System_BenchmarkLog.csv");
 
         if (!string.IsNullOrEmpty(systemLogPath))
         {
@@ -654,7 +650,10 @@ public sealed class SimulatorViewModel : ViewModelBase, IDisposable
     private void UpdateRecordingStatsUI()
     {
         var stats = _recorder.GetStats();
-        RecordingDurationText = $"⏱ {stats.Duration.Minutes:00}:{stats.Duration.Seconds:00} ({stats.SampleCount} 筆)";
+        string durationStr = stats.Duration.TotalHours >= 1
+            ? $"{(int)stats.Duration.TotalHours:00}:{stats.Duration.Minutes:00}:{stats.Duration.Seconds:00}"
+            : $"{stats.Duration.Minutes:00}:{stats.Duration.Seconds:00}";
+        RecordingDurationText = $"⏱ {durationStr} ({stats.SampleCount} 筆)";
 
         if (stats.SampleCount > 0)
         {
@@ -699,11 +698,15 @@ public sealed class SimulatorViewModel : ViewModelBase, IDisposable
             .BuildTaskManagerHardwareSection(runningUserProcesses)
             .Replace("\r\n", "\n");
 
+        string durationStr = stats.Duration.TotalHours >= 1
+            ? $"{(int)stats.Duration.TotalHours:00}:{stats.Duration.Minutes:00}:{stats.Duration.Seconds:00}"
+            : $"{stats.Duration.Minutes:00}:{stats.Duration.Seconds:00}";
+
         string fullSummary =
             $"========================================\n" +
             $"【TRIOV2 區間效能量測統計報告】\n" +
             $"量測時間：{DateTime.Now:yyyy-MM-dd HH:mm:ss}\n" +
-            $"樣本數量：共 {stats.SampleCount} 筆樣本 (紀錄時長 {stats.Duration.Minutes:00}:{stats.Duration.Seconds:00})\n" +
+            $"樣本數量：共 {stats.SampleCount} 筆樣本 (紀錄時長 {durationStr})\n" +
             $"紀錄目錄：{sessionDir}\n" +
             $"基準日誌：{_lastLogFilePath}\n" +
             $"----------------------------------------\n" +

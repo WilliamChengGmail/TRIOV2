@@ -4,7 +4,7 @@ using System.Text;
 namespace TRIOV2.ResourceSimulator.Core;
 
 /// <summary>
-/// 單一行程單筆取樣數據記錄
+/// 單一行程單筆取樣數據記錄 (保留定義以供外部型別參照)
 /// </summary>
 public record ProcessSampleRecord(
     int SampleIndex,
@@ -41,12 +41,13 @@ public sealed class TaskSummaryStats
 }
 
 /// <summary>
-/// 多任務階層式目錄與獨立 CSV 記錄引擎
+/// 多任務階層式目錄與獨立 CSV 串流記錄引擎 (適度分批 Flush 磁碟，杜絕記憶體累積與 Memory Swap)
 /// 製作者: Office of William
 /// </summary>
 public sealed class MultiProcessSessionRecorder
 {
     private const string CsvHeader = "樣本序號,時間戳記,處理程序名稱,PID,狀態,CPU使用率(%),記憶體使用量(MB),磁碟讀寫速率(KB/s),網路傳輸速率(Kbps),電源用量,電源用量趨勢";
+    private const int FlushBatchSize = 20; // 每累積 20 筆樣本批次寫入一次，兼顧磁碟 I/O 效能與即時落盤
 
     private readonly object _lock = new();
     private bool _isRecording;
@@ -55,9 +56,10 @@ public sealed class MultiProcessSessionRecorder
     private int _sampleIndex;
     private string _mainSessionDirectory = string.Empty;
 
-    // TaskName -> 該任務之樣本緩衝
-    private readonly Dictionary<string, List<ProcessSampleRecord>> _taskSamples = new(StringComparer.OrdinalIgnoreCase);
+    // TaskName -> 該任務之寫入緩衝 (字串行清單)
+    private readonly Dictionary<string, List<string>> _taskBuffers = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, TaskSummaryStats> _taskStats = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _taskCsvPaths = new(StringComparer.OrdinalIgnoreCase);
 
     public bool IsRecording => _isRecording;
     public string MainSessionDirectory => _mainSessionDirectory;
@@ -65,7 +67,7 @@ public sealed class MultiProcessSessionRecorder
     public DateTime EndTime => _endTime;
 
     /// <summary>
-    /// 啟動紀錄工作階段：以 yyyyMMdd_HHmmss 建立主目錄，並立即根據每個勾選的 task name 建立各自子資料夾
+    /// 啟動紀錄工作階段：以 yyyyMMdd_HHmmss 建立主目錄，並立即根據每個勾選的 task name 建立各自子資料夾與初始 CSV
     /// </summary>
     public string Start(IEnumerable<ProcessMonitorItem> selectedTasks, string? baseLogsDir = null)
     {
@@ -75,8 +77,9 @@ public sealed class MultiProcessSessionRecorder
             _startTime = DateTime.Now;
             _endTime = _startTime;
             _sampleIndex = 0;
-            _taskSamples.Clear();
+            _taskBuffers.Clear();
             _taskStats.Clear();
+            _taskCsvPaths.Clear();
 
             baseLogsDir ??= Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
             string sessionFolderName = _startTime.ToString("yyyyMMdd_HHmmss");
@@ -85,35 +88,46 @@ public sealed class MultiProcessSessionRecorder
             // 1. 建立主資料夾
             Directory.CreateDirectory(_mainSessionDirectory);
 
-            // 2. 針對每個被勾選的任務名稱，立即建立各自的資料夾
+            // 2. 針對每個被勾選的任務名稱，立即建立各自資料夾與 CSV 表頭
             foreach (var task in selectedTasks)
             {
                 if (string.IsNullOrWhiteSpace(task.ProcessName)) continue;
-
-                string safeTaskName = SanitizeFolderName(task.ProcessName);
-                string taskSubDir = Path.Combine(_mainSessionDirectory, safeTaskName);
-                Directory.CreateDirectory(taskSubDir);
-
-                // 立即預先建立包含表頭的 CSV 檔案，確保啟動當下檔案與資料夾立即可見
-                string initialCsvPath = Path.Combine(taskSubDir, $"{safeTaskName}_BenchmarkLog.csv");
-                if (!File.Exists(initialCsvPath))
-                {
-                    File.WriteAllText(initialCsvPath, CsvHeader + Environment.NewLine, Encoding.UTF8);
-                }
-
-                if (!_taskSamples.ContainsKey(task.ProcessName))
-                {
-                    _taskSamples[task.ProcessName] = new List<ProcessSampleRecord>();
-                    _taskStats[task.ProcessName] = new TaskSummaryStats { TaskName = task.ProcessName };
-                }
+                InitTaskTrack(task.ProcessName);
             }
 
             return _mainSessionDirectory;
         }
     }
 
+    private void InitTaskTrack(string processName)
+    {
+        string safeTaskName = SanitizeFolderName(processName);
+        string taskSubDir = Path.Combine(_mainSessionDirectory, safeTaskName);
+        Directory.CreateDirectory(taskSubDir);
+
+        string csvPath = Path.Combine(taskSubDir, $"{safeTaskName}_BenchmarkLog.csv");
+        if (!File.Exists(csvPath))
+        {
+            try
+            {
+                File.WriteAllText(csvPath, CsvHeader + Environment.NewLine, Encoding.UTF8);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MultiProcessSessionRecorder] Init CSV for '{processName}' error: {ex.Message}");
+            }
+        }
+
+        if (!_taskBuffers.ContainsKey(processName))
+        {
+            _taskBuffers[processName] = new List<string>(FlushBatchSize);
+            _taskStats[processName] = new TaskSummaryStats { TaskName = processName };
+            _taskCsvPaths[processName] = csvPath;
+        }
+    }
+
     /// <summary>
-    /// 1Hz 採樣滴答：記錄各勾選行程之效能數據
+    /// 1Hz 採樣滴答：記錄各勾選行程之效能數據 (累積純量統計，達 Batch 閾值批次 Flush 並釋放記憶體)
     /// </summary>
     public void AddSample(IEnumerable<ProcessMonitorItem> currentTrackedItems)
     {
@@ -126,35 +140,14 @@ public sealed class MultiProcessSessionRecorder
 
             foreach (var item in currentTrackedItems)
             {
-                if (!_taskSamples.TryGetValue(item.ProcessName, out var sampleList))
+                if (!_taskBuffers.TryGetValue(item.ProcessName, out var buffer))
                 {
                     // 若是紀錄中途被加入的任務，動態補建子目錄與初值
-                    string safeTaskName = SanitizeFolderName(item.ProcessName);
-                    string taskSubDir = Path.Combine(_mainSessionDirectory, safeTaskName);
-                    Directory.CreateDirectory(taskSubDir);
-
-                    sampleList = new List<ProcessSampleRecord>();
-                    _taskSamples[item.ProcessName] = sampleList;
-                    _taskStats[item.ProcessName] = new TaskSummaryStats { TaskName = item.ProcessName };
+                    InitTaskTrack(item.ProcessName);
+                    buffer = _taskBuffers[item.ProcessName];
                 }
 
-                var record = new ProcessSampleRecord(
-                    SampleIndex: _sampleIndex,
-                    Timestamp: _endTime,
-                    ProcessName: item.ProcessName,
-                    ProcessId: item.ProcessId,
-                    StatusText: item.StatusText,
-                    CpuPercent: item.CpuPercent,
-                    MemoryMb: item.MemoryMb,
-                    DiskIoKbPerSec: item.DiskIoKbPerSec,
-                    NetworkKbps: item.NetworkKbps,
-                    PowerUsage: item.PowerUsage,
-                    PowerTrend: item.PowerTrend
-                );
-
-                sampleList.Add(record);
-
-                // 更新統計
+                // 更新純量統計
                 var stats = _taskStats[item.ProcessName];
                 stats.SampleCount++;
                 if (item.CpuPercent > stats.CpuMax) stats.CpuMax = item.CpuPercent;
@@ -167,12 +160,38 @@ public sealed class MultiProcessSessionRecorder
 
                 if (item.DiskIoKbPerSec > stats.DiskIoMax) stats.DiskIoMax = item.DiskIoKbPerSec;
                 if (item.NetworkKbps > stats.NetworkMax) stats.NetworkMax = item.NetworkKbps;
+
+                // 格式化單行 CSV
+                string line = $"{_sampleIndex},{_endTime:yyyy-MM-dd HH:mm:ss},{item.ProcessName},{item.ProcessId},{item.StatusText},{item.CpuPercent:0.0},{item.MemoryMb:0.0},{item.DiskIoKbPerSec:0.0},{item.NetworkKbps:0.0},{item.PowerUsage},{item.PowerTrend}";
+                buffer.Add(line);
+
+                // 滿閾值即分批 Flush 至該任務之 CSV，並清空 buffer 釋放記憶體
+                if (buffer.Count >= FlushBatchSize)
+                {
+                    FlushTaskBufferCore(item.ProcessName, buffer);
+                }
             }
         }
     }
 
+    private void FlushTaskBufferCore(string taskName, List<string> buffer)
+    {
+        if (buffer.Count == 0) return;
+        if (!_taskCsvPaths.TryGetValue(taskName, out var csvPath)) return;
+
+        try
+        {
+            File.AppendAllLines(csvPath, buffer, Encoding.UTF8);
+            buffer.Clear();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MultiProcessSessionRecorder] Flush task '{taskName}' error: {ex.Message}");
+        }
+    }
+
     /// <summary>
-    /// 停止紀錄並將各任務數據 Flush 寫入各自子目錄下的 CSV 檔案
+    /// 停止紀錄並將各任務剩餘緩衝 Flush 寫入 CSV，同時追加各任務獨立效能量測統計摘要區塊
     /// </summary>
     public List<string> StopAndFlush()
     {
@@ -191,42 +210,55 @@ public sealed class MultiProcessSessionRecorder
                 return writtenFiles;
             }
 
-            foreach (var kv in _taskSamples)
+            TimeSpan totalDuration = _endTime - _startTime;
+            string durationStr = totalDuration.TotalHours >= 1
+                ? $"{(int)totalDuration.TotalHours:00}:{totalDuration.Minutes:00}:{totalDuration.Seconds:00}"
+                : $"{totalDuration.Minutes:00}:{totalDuration.Seconds:00}";
+
+            foreach (var kv in _taskBuffers)
             {
                 string taskName = kv.Key;
-                var samples = kv.Value;
+                var buffer = kv.Value;
 
-                string safeTaskName = SanitizeFolderName(taskName);
-                string taskSubDir = Path.Combine(_mainSessionDirectory, safeTaskName);
-                Directory.CreateDirectory(taskSubDir);
+                // 1. Flush 該任務最後殘留的零星緩衝
+                FlushTaskBufferCore(taskName, buffer);
 
-                string csvPath = Path.Combine(taskSubDir, $"{safeTaskName}_BenchmarkLog.csv");
+                if (!_taskCsvPaths.TryGetValue(taskName, out var csvPath)) continue;
 
-                var sb = new StringBuilder();
-                sb.AppendLine(CsvHeader);
-
-                foreach (var s in samples)
-                {
-                    sb.AppendLine($"{s.SampleIndex},{s.Timestamp:yyyy-MM-dd HH:mm:ss},{s.ProcessName},{s.ProcessId},{s.StatusText},{s.CpuPercent:0.0},{s.MemoryMb:0.0},{s.DiskIoKbPerSec:0.0},{s.NetworkKbps:0.0},{s.PowerUsage},{s.PowerTrend}");
-                }
-
-                // 任務摘要結尾
+                // 2. 附加任務摘要結尾區塊
                 if (_taskStats.TryGetValue(taskName, out var stat))
                 {
                     float minCpu = stat.CpuMin == float.MaxValue ? 0f : stat.CpuMin;
                     double minMem = stat.MemMin == double.MaxValue ? 0.0 : stat.MemMin;
 
+                    var sb = new StringBuilder();
                     sb.AppendLine();
                     sb.AppendLine("# ========================================================");
                     sb.AppendLine($"# 【任務：{taskName} 效能量測統計摘要】");
+                    sb.AppendLine($"# 量測期間: {_startTime:yyyy-MM-dd HH:mm:ss} ~ {_endTime:yyyy-MM-dd HH:mm:ss} (總時長: {durationStr})");
                     sb.AppendLine($"# 總樣本數: {stat.SampleCount} 筆");
-                    sb.AppendLine($"# CPU 使用率: 最高 {stat.CpuMax:0.0} %, 最低 {minCpu:0.0} %, 平均 {stat.CpuAvg:0.0} %");
-                    sb.AppendLine($"# 記憶體使用量: 最高 {stat.MemMax:0.0} MB, 最低 {minMem:0.0} MB, 平均 {stat.MemAvg:0.0} MB");
-                    sb.AppendLine($"# 磁碟讀寫峰值: {stat.DiskIoMax:0.0} KB/s, 網路傳輸峰值: {stat.NetworkMax:0.0} Kbps");
+                    if (stat.SampleCount > 0)
+                    {
+                        sb.AppendLine($"# CPU 使用率: 最高 {stat.CpuMax:0.0} %, 最低 {minCpu:0.0} %, 平均 {stat.CpuAvg:0.0} %");
+                        sb.AppendLine($"# 記憶體使用量: 最高 {stat.MemMax:0.0} MB, 最低 {minMem:0.0} MB, 平均 {stat.MemAvg:0.0} MB");
+                        sb.AppendLine($"# 磁碟讀寫峰值: {stat.DiskIoMax:0.0} KB/s, 網路傳輸峰值: {stat.NetworkMax:0.0} Kbps");
+                    }
+                    else
+                    {
+                        sb.AppendLine($"# (此任務在量測期間尚未啟動或無取樣數據)");
+                    }
                     sb.AppendLine("# ========================================================");
+
+                    try
+                    {
+                        File.AppendAllText(csvPath, sb.ToString(), Encoding.UTF8);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[MultiProcessSessionRecorder] Append footer for '{taskName}' error: {ex.Message}");
+                    }
                 }
 
-                File.WriteAllText(csvPath, sb.ToString(), Encoding.UTF8);
                 writtenFiles.Add(csvPath);
             }
         }
@@ -270,6 +302,12 @@ public sealed class MultiProcessSessionRecorder
             foreach (var kv in _taskStats)
             {
                 var s = kv.Value;
+                if (s.SampleCount == 0)
+                {
+                    sb.AppendLine($"► 任務名稱：{s.TaskName} (未啟動 / 無樣本)");
+                    continue;
+                }
+
                 float minCpu = s.CpuMin == float.MaxValue ? 0f : s.CpuMin;
                 double minMem = s.MemMin == double.MaxValue ? 0.0 : s.MemMin;
 
