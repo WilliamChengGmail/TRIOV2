@@ -1,8 +1,9 @@
 # TRIO V2 工具套件目錄說明 (Tools Directory Guide)
 
 > **維護單位**: Office of William  
-> **最後更新**: 2026-11-19  
-> **核心原則**: **獨立免安裝、零相依（Standalone / Portable）**。複製本目錄至任何 Windows 目標裝置即可直接運行相關工具，無需安裝 .NET SDK 或 Python 環境。
+> **最後更新**: 2026-11-24  
+> **核心原則**: **獨立免安裝、零相依（Standalone / Portable）**。全數工具採 **Self-Contained（自包含）** 獨立編譯發佈，內建獨立之 .NET 8 與 Windows Desktop Runtime。複製本目錄至任何未安裝 .NET 元件的 Windows 目標裝置即可直接運行。
+> **批次發佈腳本**: `src\Tools\Scripts\Build-AllTools.ps1`（一鍵自動化發佈全部 12 項工具）
 
 ---
 
