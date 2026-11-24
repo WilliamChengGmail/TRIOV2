@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     TRIOV2 工具套件一鍵自包含（Self-Contained）發佈腳本
 .DESCRIPTION
@@ -35,7 +35,8 @@ $tools = @(
     @{ Name = "Simulator";          Proj = "src\Tools\TRIOV2.Simulator\TRIOV2.Simulator.csproj";            Out = "Tools\Simulator_bin" },
     @{ Name = "PrivilegedService";  Proj = "src\TRIOV2.PrivilegedService\TRIOV2.PrivilegedService.csproj";  Out = "Tools\PrivilegedService" },
     @{ Name = "VisionSimulator";    Proj = "src\Tools\TRIOV2.VisionSimulator\TRIOV2.VisionSimulator.csproj";Out = "Tools\VisionSimulator" },
-    @{ Name = "ResourceSimulator";  Proj = "src\Tools\TRIOV2.ResourceSimulator\TRIOV2.ResourceSimulator.csproj"; Out = "Tools\ResourceSimulator" }
+    @{ Name = "ResourceSimulator";  Proj = "src\Tools\TRIOV2.ResourceSimulator\TRIOV2.ResourceSimulator.csproj"; Out = "Tools\ResourceSimulator" },
+    @{ Name = "DbIoSimulator";      Proj = "src\Tools\TRIOV2.DbIoSimulator\TRIOV2.DbIoSimulator.csproj";   Out = "Tools\DbIoSimulator" }
 )
 
 $count = 0
