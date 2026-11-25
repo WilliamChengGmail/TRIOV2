@@ -450,7 +450,8 @@ public partial class LauncherWindow : Window
     {
         try
         {
-            var dir = @"d:\TRIOV2\Tools\Screenshots";
+            var baseDir = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)?.FullName ?? AppDomain.CurrentDomain.BaseDirectory;
+            var dir = Path.Combine(baseDir, "Screenshots");
             if (!Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
 
