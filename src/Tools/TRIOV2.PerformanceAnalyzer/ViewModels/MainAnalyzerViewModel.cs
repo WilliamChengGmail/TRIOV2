@@ -45,6 +45,13 @@ public sealed class MainAnalyzerViewModel : ViewModelBase
     private string _kpiRunCountText = "0 次";
     private string _kpiPassCountText = "0 台";
     private string _kpiAttentionCountText = "0 台";
+    private string _fleetSummaryText = "尚未載入測試資料。";
+    private string _fleetSummaryDetailText = string.Empty;
+    private int _upgradeDeviceCount;
+    private int _warnDeviceCount;
+    private int _passDeviceCount;
+    private int _insufficientDeviceCount;
+    private string _lastSavedThresholds = string.Empty;
     private IReadOnlyList<DeviceAggregateSummary> _chartDevices = Array.Empty<DeviceAggregateSummary>();
 
     public ObservableCollection<DeviceAggregateSummary> DeviceGroups { get; } = new();
@@ -256,6 +263,17 @@ public sealed class MainAnalyzerViewModel : ViewModelBase
     public string KpiPassCountText { get => _kpiPassCountText; private set => SetProperty(ref _kpiPassCountText, value); }
     public string KpiAttentionCountText { get => _kpiAttentionCountText; private set => SetProperty(ref _kpiAttentionCountText, value); }
 
+    /// <summary>給主管／非技術讀者的一句話總結。</summary>
+    public string FleetSummaryText { get => _fleetSummaryText; private set => SetProperty(ref _fleetSummaryText, value); }
+
+    /// <summary>總結下方的補充說明（排除了哪些資料）。</summary>
+    public string FleetSummaryDetailText { get => _fleetSummaryDetailText; private set => SetProperty(ref _fleetSummaryDetailText, value); }
+
+    public int UpgradeDeviceCount { get => _upgradeDeviceCount; private set => SetProperty(ref _upgradeDeviceCount, value); }
+    public int WarnDeviceCount { get => _warnDeviceCount; private set => SetProperty(ref _warnDeviceCount, value); }
+    public int PassDeviceCount { get => _passDeviceCount; private set => SetProperty(ref _passDeviceCount, value); }
+    public int InsufficientDeviceCount { get => _insufficientDeviceCount; private set => SetProperty(ref _insufficientDeviceCount, value); }
+
     public ICommand BrowseFolderCommand { get; }
     public ICommand ScanPathCommand { get; }
     public ICommand GoUpLevelCommand { get; }
@@ -281,6 +299,14 @@ public sealed class MainAnalyzerViewModel : ViewModelBase
         ExportHtmlCommand = new RelayCommand(_ => ExportHtmlReport());
         ExportCsvCommand = new RelayCommand(_ => ExportCsvReport());
         CopyMarkdownCommand = new RelayCommand(_ => CopyMarkdownReport());
+
+        // 載入上次保存的判定門檻（執行檔旁 analyzer-settings.json）
+        var saved = AnalyzerSettingsStore.Load();
+        _cpuP95PassLimit = Math.Clamp(saved.CpuP95PassLimit, 30, 95);
+        _cpuP95WarnLimit = Math.Clamp(saved.CpuP95WarnLimit, _cpuP95PassLimit, 99);
+        _ramPeakPassLimit = Math.Clamp(saved.RamPeakPassLimit, 40, 95);
+        _ramPeakWarnLimit = Math.Clamp(saved.RamPeakWarnLimit, _ramPeakPassLimit, 99);
+        _lastSavedThresholds = ThresholdSignature(CurrentThresholds());
     }
 
     public async Task InitializeAsync(string? startupPath)
@@ -500,7 +526,7 @@ public sealed class MainAnalyzerViewModel : ViewModelBase
 
         DeviceGroups.Clear();
         foreach (var g in groups) DeviceGroups.Add(g);
-        ChartDevices = groups;
+        ChartDevices = groups.Where(g => g.IncludedRunCount > 0).ToList();
 
         SelectedTrendDevice = groups.FirstOrDefault(g => string.Equals(g.DeviceKey, prevTrendKey, StringComparison.OrdinalIgnoreCase))
                               ?? groups.FirstOrDefault();
@@ -514,6 +540,9 @@ public sealed class MainAnalyzerViewModel : ViewModelBase
         KpiRunCountText = $"{activeRuns} 次";
         KpiPassCountText = $"{passDevs} 台";
         KpiAttentionCountText = $"{warnDevs} 台";
+
+        UpdateFleetSummary(groups);
+        SaveThresholdsIfChanged(thresholds);
 
         ModeBadgeText = IsSingleSessionMode
             ? $"單次分析模式 | {SelectedSession?.SessionName}"
@@ -556,7 +585,8 @@ public sealed class MainAnalyzerViewModel : ViewModelBase
                 RamPeakGb = s.RamMaxGb,
                 CpuP95DeltaText = cpuDelta,
                 RamPeakDeltaText = ramDelta,
-                VerdictBadge = s.Verdict.BadgeText,
+                VerdictBadge = s.Verdict.ShortLabel,
+                VerdictPlain = s.Verdict.PlainSummary,
                 VerdictColorHex = s.Verdict.BadgeColorHex
             });
         }
@@ -592,6 +622,26 @@ public sealed class MainAnalyzerViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// 批次匯出（命令列 --export 使用）：在指定資料夾輸出 HTML、CSV、Markdown 三種報告。
+    /// </summary>
+    public IReadOnlyList<string> ExportAllTo(string outputDir)
+    {
+        Directory.CreateDirectory(outputDir);
+        string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        var devices = DeviceGroups.ToList();
+        var thresholds = CurrentThresholds();
+
+        string html = Path.Combine(outputDir, $"TRIOV2_Benchmark_Report_{stamp}.html");
+        string csv = Path.Combine(outputDir, $"TRIOV2_Device_Summary_{stamp}.csv");
+        string md = Path.Combine(outputDir, $"TRIOV2_Benchmark_Report_{stamp}.md");
+
+        ReportExporter.ExportHtml(html, TargetPath, devices, thresholds);
+        ReportExporter.ExportCsv(csv, devices);
+        File.WriteAllText(md, ReportExporter.BuildMarkdownReport(TargetPath, devices, thresholds), new System.Text.UTF8Encoding(true));
+        return new[] { html, csv, md };
+    }
+
     private void CopyMarkdownReport()
     {
         if (DeviceGroups.Count == 0) return;
@@ -599,6 +649,43 @@ public sealed class MainAnalyzerViewModel : ViewModelBase
         Clipboard.SetText(md);
         StatusMessage = "已將完整 Markdown 效能比較摘要複製到系統剪貼簿！";
     }
+
+    private void UpdateFleetSummary(IReadOnlyList<DeviceAggregateSummary> groups)
+    {
+        var summary = FleetSummary.Build(groups);
+        UpgradeDeviceCount = summary.UpgradeCount;
+        WarnDeviceCount = summary.WarnCount;
+        PassDeviceCount = summary.PassCount;
+        InsufficientDeviceCount = summary.InsufficientCount;
+        FleetSummaryText = summary.Sentence;
+
+        var notes = new List<string>();
+        if (InsufficientDeviceCount > 0)
+        {
+            notes.Add($"另有 {InsufficientDeviceCount} 台設備資料不足，未列入判斷");
+        }
+
+        int excludedShort = VisibleSessions.Count(s => !s.IsIncluded && SizingAdvisorEngine.IsTooShort(s));
+        if (excludedShort > 0)
+        {
+            notes.Add($"{excludedShort} 筆短於 {SizingAdvisorEngine.MinimumValidSeconds:0} 秒的試跑紀錄已自動排除（可在左側手動勾選）");
+        }
+
+        FleetSummaryDetailText = notes.Count == 0 ? string.Empty : string.Join("；", notes) + "。";
+    }
+
+    private void SaveThresholdsIfChanged(EvaluationThresholds thresholds)
+    {
+        string signature = ThresholdSignature(thresholds);
+        if (signature == _lastSavedThresholds) return;
+        if (AnalyzerSettingsStore.TrySave(thresholds))
+        {
+            _lastSavedThresholds = signature;
+        }
+    }
+
+    private static string ThresholdSignature(EvaluationThresholds t)
+        => $"{t.CpuP95PassLimit}|{t.CpuP95WarnLimit}|{t.RamPeakPassLimit}|{t.RamPeakWarnLimit}";
 
     private EvaluationThresholds CurrentThresholds() => new()
     {

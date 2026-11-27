@@ -370,6 +370,9 @@ public static class LogSessionScanner
         };
 
         session.Verdict = SizingAdvisorEngine.EvaluateSession(session, thresholds);
+
+        // 誤觸產生的超短紀錄預設不納入設備彙總，避免以幾秒鐘的資料下結論（仍可手動勾選）
+        session.IsIncluded = !SizingAdvisorEngine.IsTooShort(session);
         return session;
     }
 

@@ -54,7 +54,9 @@ public static class DeviceGroupingEngine
                 peakRamPct,
                 representative.HardwareProfile.MemoryInstalledGb,
                 thresholds,
-                topTasks);
+                topTasks,
+                hasValidRun: includedRuns.Any(s => !SizingAdvisorEngine.IsTooShort(s)),
+                onlyShortRunsExist: includedRuns.Count == 0 && allRuns.All(SizingAdvisorEngine.IsTooShort));
 
             list.Add(new DeviceAggregateSummary
             {

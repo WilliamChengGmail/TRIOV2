@@ -22,6 +22,7 @@ public sealed class SessionComparisonRow
     public string CpuP95DeltaText { get; init; } = "--";
     public string RamPeakDeltaText { get; init; } = "--";
     public string VerdictBadge { get; init; } = string.Empty;
+    public string VerdictPlain { get; init; } = string.Empty;
     public string VerdictColorHex { get; init; } = "#64748B";
 }
 

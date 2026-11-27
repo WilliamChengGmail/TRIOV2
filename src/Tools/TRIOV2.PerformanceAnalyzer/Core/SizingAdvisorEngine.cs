@@ -8,17 +8,22 @@ namespace TRIOV2.PerformanceAnalyzer.Core;
 /// </summary>
 public static class SizingAdvisorEngine
 {
+    /// <summary>短於此秒數的測試視為「資料不足」，預設不納入設備彙總。</summary>
+    public const double MinimumValidSeconds = 10;
+
+    public static bool IsTooShort(BenchmarkSession session)
+        => session.SampleCount == 0 || session.Duration.TotalSeconds < MinimumValidSeconds;
+
     public static SizingVerdict EvaluateSession(BenchmarkSession session, EvaluationThresholds thresholds)
     {
         if (session.SampleCount == 0)
         {
-            return new SizingVerdict
-            {
-                Level = SizingLevel.NoData,
-                BadgeText = "無數據",
-                ReasonSummary = "無有效採樣",
-                Recommendation = "無足夠數據供評估"
-            };
+            return NoDataVerdict("無有效採樣", "無足夠數據供評估");
+        }
+
+        if (session.Duration.TotalSeconds < MinimumValidSeconds)
+        {
+            return InsufficientVerdict($"測試僅 {session.Duration.TotalSeconds:0} 秒 (< {MinimumValidSeconds:0} 秒)");
         }
 
         string topTaskHint = BuildTopTaskHint(session.Tasks);
@@ -37,8 +42,15 @@ public static class SizingAdvisorEngine
         double peakRamPercentAcrossRuns,
         double installedMemoryGb,
         EvaluationThresholds thresholds,
-        IReadOnlyList<TaskBenchmarkSummary> topTasks)
+        IReadOnlyList<TaskBenchmarkSummary> topTasks,
+        bool hasValidRun = true,
+        bool onlyShortRunsExist = false)
     {
+        if (onlyShortRunsExist)
+        {
+            return InsufficientVerdict($"此設備只有短於 {MinimumValidSeconds:0} 秒的測試紀錄");
+        }
+
         if (maxCpuP95AcrossRuns <= 0 && peakRamPercentAcrossRuns <= 0)
         {
             return new SizingVerdict
@@ -46,8 +58,14 @@ public static class SizingAdvisorEngine
                 Level = SizingLevel.NoData,
                 BadgeText = "未納入場次",
                 ReasonSummary = "請於左側勾選至少 1 筆有效測試",
-                Recommendation = "-"
+                Recommendation = "-",
+                PlainSummary = "這台設備目前沒有勾選任何測試，請在左側清單勾選要納入判斷的測試。"
             };
+        }
+
+        if (!hasValidRun)
+        {
+            return InsufficientVerdict($"已勾選的測試皆短於 {MinimumValidSeconds:0} 秒");
         }
 
         string topTaskHint = BuildTopTaskHint(topTasks);
@@ -96,12 +114,17 @@ public static class SizingAdvisorEngine
                 recs.Add(topTaskHint);
             }
 
+            var parts = new List<string>();
+            if (cpuUpgrade) parts.Add("處理器");
+            if (ramUpgrade) parts.Add("記憶體");
+
             return new SizingVerdict
             {
                 Level = SizingLevel.UpgradeRequired,
                 BadgeText = "建議升級機器等級",
                 ReasonSummary = string.Join("；", reasons),
-                Recommendation = string.Join("。", recs)
+                Recommendation = string.Join("。", recs),
+                PlainSummary = $"這台電腦的{string.Join("和", parts)}不足以穩定應付目前的工作量，使用時可能變慢或卡頓，建議提高硬體規格。"
             };
         }
 
@@ -115,12 +138,17 @@ public static class SizingAdvisorEngine
                 ? $"建議保留緩衝餘裕或評估次一級規格 (CPU Max={cpuMax:0.0}%)"
                 : $"效能接近上限，{topTaskHint}";
 
+            var parts = new List<string>();
+            if (cpuWarn) parts.Add("處理器");
+            if (ramWarn) parts.Add("記憶體");
+
             return new SizingVerdict
             {
                 Level = SizingLevel.Warning,
                 BadgeText = "接近滿載警戒",
                 ReasonSummary = string.Join("；", reasons),
-                Recommendation = rec
+                Recommendation = rec,
+                PlainSummary = $"硬體目前夠用，但{string.Join("和", parts)}已接近上限；若之後功能增加或同時執行更多工作，可能會不夠用。"
             };
         }
 
@@ -129,9 +157,28 @@ public static class SizingAdvisorEngine
             Level = SizingLevel.Pass,
             BadgeText = "規格餘裕充足 (PASS)",
             ReasonSummary = $"CPU P95 {cpuP95:0.0}% (<{thresholds.CpuP95PassLimit:0.#}%)、RAM 峰值 {ramPeakPct:0.#}% (<{thresholds.RamPeakPassLimit:0.#}%)",
-            Recommendation = "現行機器硬體效能足以負擔工作負載"
+            Recommendation = "現行機器硬體效能足以負擔工作負載",
+            PlainSummary = "這台電腦的硬體足以應付目前的工作量，而且還有餘裕。"
         };
     }
+
+    private static SizingVerdict NoDataVerdict(string reason, string recommendation) => new()
+    {
+        Level = SizingLevel.NoData,
+        BadgeText = "無數據",
+        ReasonSummary = reason,
+        Recommendation = recommendation,
+        PlainSummary = "沒有可用的測試資料。"
+    };
+
+    private static SizingVerdict InsufficientVerdict(string reason) => new()
+    {
+        Level = SizingLevel.InsufficientData,
+        BadgeText = "資料不足",
+        ReasonSummary = reason,
+        Recommendation = $"請以完整操作流程重新測試（建議 5 分鐘以上）；短於 {MinimumValidSeconds:0} 秒的紀錄預設不納入設備彙總",
+        PlainSummary = "測試時間太短，無法判斷硬體是否足夠，請重新進行完整測試。"
+    };
 
     private static string BuildTopTaskHint(IReadOnlyList<TaskBenchmarkSummary> tasks)
     {

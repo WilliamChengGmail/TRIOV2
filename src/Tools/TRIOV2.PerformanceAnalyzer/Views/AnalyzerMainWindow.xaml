@@ -297,8 +297,9 @@
                                                     </TextBlock>
                                                 </StackPanel>
                                                 <Border Grid.Column="1" VerticalAlignment="Top" CornerRadius="4" Padding="6,2"
-                                                        Background="{Binding Verdict.BadgeColorHex}">
-                                                    <TextBlock Text="{Binding Verdict.Level}" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                                        Background="{Binding Verdict.BadgeColorHex}"
+                                                        ToolTip="{Binding Verdict.PlainSummary}">
+                                                    <TextBlock Text="{Binding Verdict.ShortLabel}" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
                                                 </Border>
                                             </Grid>
 
@@ -307,8 +308,14 @@
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate DataType="{x:Type models:BenchmarkSession}">
                                                         <Border Background="Transparent" Padding="3,4" CornerRadius="4"
-                                                                MouseLeftButtonDown="SessionItem_MouseLeftButtonDown" Cursor="Hand"
-                                                                ToolTip="雙擊開啟此場次時間軸與詳細任務分析">
+                                                                MouseLeftButtonDown="SessionItem_MouseLeftButtonDown" Cursor="Hand">
+                                                            <Border.ToolTip>
+                                                                <StackPanel MaxWidth="320">
+                                                                    <TextBlock Text="{Binding Verdict.ShortLabel}" FontWeight="Bold"/>
+                                                                    <TextBlock Text="{Binding Verdict.PlainSummary}" TextWrapping="Wrap"/>
+                                                                    <TextBlock Text="勾選＝納入設備判定；雙擊＝開啟此場次的時間軸與任務分析" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                                </StackPanel>
+                                                            </Border.ToolTip>
                                                             <Grid>
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="Auto"/>
@@ -365,13 +372,14 @@
             <TabControl Grid.Column="2" SelectedIndex="{Binding SelectedTabIndex}" Background="Transparent" BorderThickness="0">
 
                 <!-- Tab 1: 設備總覽與選型建議 -->
-                <TabItem Header="1. 設備總覽與選型建議">
+                <TabItem Header="1. 設備總覽與選型建議" ToolTip="回答：每台電腦的硬體夠不夠用？（主管先看這頁）">
                     <Border Style="{StaticResource CardStyle}" CornerRadius="0,8,8,8">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
-                                <RowDefinition Height="220"/>
+                                <RowDefinition Height="200"/>
                             </Grid.RowDefinitions>
 
                             <!-- KPI 摘要卡片列 -->
@@ -409,24 +417,88 @@
                                 </Border>
                             </Grid>
 
-                            <!-- 跨設備硬體規格與選型比較表 -->
-                            <DataGrid Grid.Row="1" ItemsSource="{Binding DeviceGroups}" Margin="0,0,0,10">
+                            <!-- 結論摘要：給主管與非技術同仁的一句話判讀 -->
+                            <Border Grid.Row="1" Background="#151518" BorderBrush="#2C2C32" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="結論摘要：這些電腦的硬體夠不夠用？" FontSize="12" Foreground="#A1A1AA"/>
+                                        <TextBlock Text="{Binding FleetSummaryText}" FontSize="15" FontWeight="Bold" Foreground="#FFFFFF" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                                        <TextBlock Text="{Binding FleetSummaryDetailText}" FontSize="11.5" Foreground="#A1A1AA" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        <TextBlock FontSize="11.5" Foreground="#71717A" TextWrapping="Wrap" Margin="0,4,0,0"
+                                                   Text="燈號說明：通過＝硬體夠用且有餘裕；接近上限＝目前夠用但餘裕不多；建議升級＝硬體不足，使用時可能卡頓；資料不足＝測試太短無法判斷。滑鼠停在燈號上可看白話說明。"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                                        <StackPanel Width="72">
+                                            <TextBlock Text="{Binding UpgradeDeviceCount}" FontSize="22" FontWeight="Bold" Foreground="#EF4444" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="建議升級" FontSize="11.5" Foreground="#A1A1AA" HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                        <StackPanel Width="72">
+                                            <TextBlock Text="{Binding WarnDeviceCount}" FontSize="22" FontWeight="Bold" Foreground="#F59E0B" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="接近上限" FontSize="11.5" Foreground="#A1A1AA" HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                        <StackPanel Width="72">
+                                            <TextBlock Text="{Binding PassDeviceCount}" FontSize="22" FontWeight="Bold" Foreground="#10B981" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="通過" FontSize="11.5" Foreground="#A1A1AA" HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                        <StackPanel Width="72">
+                                            <TextBlock Text="{Binding InsufficientDeviceCount}" FontSize="22" FontWeight="Bold" Foreground="#A1A1AA" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="資料不足" FontSize="11.5" Foreground="#A1A1AA" HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- 跨設備硬體規格與選型比較表（判定白話說明在前，技術依據在後） -->
+                            <DataGrid Grid.Row="2" ItemsSource="{Binding DeviceGroups}" Margin="0,0,0,10"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Auto">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="設備名稱" Binding="{Binding DisplayName}" Width="140"/>
-                                    <DataGridTextColumn Header="CPU 規格" Binding="{Binding HardwareProfile.ShortCpuLabel}" Width="210"/>
-                                    <DataGridTextColumn Header="記憶體" Binding="{Binding HardwareProfile.ShortMemoryLabel}" Width="125"/>
-                                    <DataGridTextColumn Header="作業系統" Binding="{Binding HardwareProfile.ShortOsLabel}" Width="175"/>
-                                    <DataGridTextColumn Header="次數" Binding="{Binding RunCountDisplay}" Width="65"/>
-                                    <DataGridTextColumn Header="CPU Avg / P95 / Max" Binding="{Binding CpuSummaryDisplay}" Width="160"/>
-                                    <DataGridTextColumn Header="RAM Peak" Binding="{Binding RamPeakDisplay}" Width="125"/>
-                                    <DataGridTemplateColumn Header="適配判定與升級建議" Width="*">
+                                    <DataGridTextColumn Header="設備名稱" Binding="{Binding DisplayName}" Width="150"/>
+                                    <DataGridTemplateColumn Header="判定（白話說明）" Width="290">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel>
                                                     <Border HorizontalAlignment="Left" CornerRadius="4" Padding="7,2" Background="{Binding Verdict.BadgeColorHex}" Margin="0,0,0,3">
-                                                        <TextBlock Text="{Binding Verdict.BadgeText}" FontSize="11.5" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                                        <TextBlock Text="{Binding Verdict.ShortLabel}" FontSize="11.5" FontWeight="Bold" Foreground="#FFFFFF"/>
                                                     </Border>
-                                                    <TextBlock Text="{Binding Verdict.Recommendation}" FontSize="11.5" Foreground="#D4D4D8" TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding Verdict.PlainSummary}" FontSize="11.5" Foreground="#E4E4E7" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="CPU 規格" Binding="{Binding HardwareProfile.ShortCpuLabel}" Width="200"/>
+                                    <DataGridTextColumn Header="記憶體" Binding="{Binding HardwareProfile.ShortMemoryLabel}" Width="110"/>
+                                    <DataGridTextColumn Header="作業系統" Binding="{Binding HardwareProfile.ShortOsLabel}" Width="170"/>
+                                    <DataGridTextColumn Header="次數" Binding="{Binding RunCountDisplay}" Width="65">
+                                        <DataGridTextColumn.HeaderStyle>
+                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                <Setter Property="ToolTip" Value="納入判定的測試次數 / 該設備全部測試次數"/>
+                                            </Style>
+                                        </DataGridTextColumn.HeaderStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="CPU Avg / P95 / Max" Binding="{Binding CpuSummaryDisplay}" Width="160">
+                                        <DataGridTextColumn.HeaderStyle>
+                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                <Setter Property="ToolTip" Value="處理器使用率：平均 / P95 / 最高。P95：測試期間 95% 的時間，使用率都低於這個數字。比「最高值」更能代表常態下的高負載，本工具以它判定處理器是否足夠。"/>
+                                            </Style>
+                                        </DataGridTextColumn.HeaderStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="RAM Peak" Binding="{Binding RamPeakDisplay}" Width="125">
+                                        <DataGridTextColumn.HeaderStyle>
+                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                <Setter Property="ToolTip" Value="RAM Peak：測試期間記憶體使用率的最高值。接近 100% 時電腦會明顯變慢。"/>
+                                            </Style>
+                                        </DataGridTextColumn.HeaderStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTemplateColumn Header="技術依據與升級建議（SW）" Width="380">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Verdict.ReasonSummary}" FontSize="11.5" Foreground="#A1A1AA" TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding Verdict.Recommendation}" FontSize="11.5" Foreground="#D4D4D8" TextWrapping="Wrap" Margin="0,2,0,0"/>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
@@ -435,7 +507,7 @@
                             </DataGrid>
 
                             <!-- 跨設備對比柱狀圖 -->
-                            <Border Grid.Row="2" Background="#141416" BorderBrush="#2C2C32" BorderThickness="1" CornerRadius="6" Padding="8">
+                            <Border Grid.Row="3" Background="#141416" BorderBrush="#2C2C32" BorderThickness="1" CornerRadius="6" Padding="8">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto"/>
@@ -454,7 +526,7 @@
                 </TabItem>
 
                 <!-- Tab 2: 同機多次測試趨勢 -->
-                <TabItem Header="2. 同機多次測試趨勢">
+                <TabItem Header="2. 同機多次測試趨勢" ToolTip="回答：同一台電腦多次測試的結果穩不穩定、有沒有變差？">
                     <Border Style="{StaticResource CardStyle}" CornerRadius="0,8,8,8">
                         <Grid>
                             <Grid.RowDefinitions>
@@ -467,7 +539,11 @@
                                 <TextBlock Text="選擇檢視設備：" VerticalAlignment="Center" Foreground="#A1A1AA" Margin="0,0,8,0"/>
                                 <ComboBox Width="340" ItemsSource="{Binding DeviceGroups}" SelectedItem="{Binding SelectedTrendDevice}" DisplayMemberPath="DisplayName"
                                           Padding="8,5" Foreground="#111827"/>
-                                <TextBlock Text="{Binding SelectedTrendDevice.Verdict.BadgeText}" VerticalAlignment="Center" Margin="14,0,0,0" FontWeight="Bold" Foreground="#38BDF8"/>
+                                <Border Margin="14,0,0,0" CornerRadius="4" Padding="8,3" VerticalAlignment="Center"
+                                        Background="{Binding SelectedTrendDevice.Verdict.BadgeColorHex}">
+                                    <TextBlock Text="{Binding SelectedTrendDevice.Verdict.ShortLabel}" FontWeight="Bold" FontSize="12" Foreground="#FFFFFF"/>
+                                </Border>
+                                <TextBlock Text="{Binding SelectedTrendDevice.Verdict.PlainSummary}" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#D4D4D8" TextTrimming="CharacterEllipsis" MaxWidth="560"/>
                             </StackPanel>
 
                             <Border Grid.Row="1" Background="#141416" BorderBrush="#2C2C32" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,10">
@@ -492,7 +568,15 @@
                                         <DataGridTextColumn Header="CPU P95" Binding="{Binding CpuP95, StringFormat={}{0:0.0}%}" Width="75"/>
                                         <DataGridTextColumn Header="CPU Max" Binding="{Binding CpuMax, StringFormat={}{0:0.0}%}" Width="75"/>
                                         <DataGridTextColumn Header="RAM Peak" Binding="{Binding RamPeakPercent, StringFormat={}{0:0}%}" Width="80"/>
-                                        <DataGridTextColumn Header="結論" Binding="{Binding Verdict.BadgeText}" Width="*"/>
+                                        <DataGridTemplateColumn Header="結論" Width="90">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Border HorizontalAlignment="Left" CornerRadius="4" Padding="6,1" Background="{Binding Verdict.BadgeColorHex}" ToolTip="{Binding Verdict.PlainSummary}">
+                                                        <TextBlock Text="{Binding Verdict.ShortLabel}" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
                                     </DataGrid.Columns>
                                 </DataGrid>
 
@@ -510,7 +594,7 @@
                 </TabItem>
 
                 <!-- Tab 3: 單次時間軸與任務剖析 -->
-                <TabItem Header="3. 單次時間軸與任務剖析">
+                <TabItem Header="3. 單次時間軸與任務剖析" ToolTip="回答：單一場測試中，每秒的資源使用與各程式何時執行（SW 調查用）">
                     <Border Style="{StaticResource CardStyle}" CornerRadius="0,8,8,8">
                         <Grid>
                             <Grid.RowDefinitions>
@@ -531,10 +615,15 @@
                                 <TextBlock Text="檢視場次：" VerticalAlignment="Center" Foreground="#A1A1AA" Margin="0,0,8,0"/>
                                 <ComboBox Grid.Column="1" ItemsSource="{Binding VisibleSessions}" SelectedItem="{Binding SelectedSession}"
                                           DisplayMemberPath="SessionName" Padding="8,4" Foreground="#111827"/>
-                                <Border Grid.Column="2" Margin="12,0,0,0" HorizontalAlignment="Left" CornerRadius="4" Padding="8,3"
-                                        Background="{Binding SelectedSession.Verdict.BadgeColorHex}">
-                                    <TextBlock Text="{Binding SelectedSession.Verdict.BadgeText}" FontWeight="Bold" FontSize="12" Foreground="#FFFFFF"/>
-                                </Border>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="12,0,0,0">
+                                    <Border HorizontalAlignment="Left" CornerRadius="4" Padding="8,3" VerticalAlignment="Center"
+                                            Background="{Binding SelectedSession.Verdict.BadgeColorHex}">
+                                        <TextBlock Text="{Binding SelectedSession.Verdict.BadgeText}" FontWeight="Bold" FontSize="12" Foreground="#FFFFFF"/>
+                                    </Border>
+                                    <TextBlock Text="{Binding SelectedSession.Verdict.PlainSummary}" VerticalAlignment="Center" Margin="10,0,0,0"
+                                               Foreground="#D4D4D8" FontSize="12" TextTrimming="CharacterEllipsis" MaxWidth="520"
+                                               ToolTip="{Binding SelectedSession.Verdict.ReasonSummary}"/>
+                                </StackPanel>
                                 <Button Grid.Column="3" Content="重設時間軸縮放" Style="{StaticResource DarkBtn}" Click="ResetTimelineZoom_Click"/>
                             </Grid>
 
@@ -702,7 +791,7 @@
                 </TabItem>
 
                 <!-- Tab 4: 門檻設定、並排差異比對與匯出 -->
-                <TabItem Header="4. 門檻設定與場次比對">
+                <TabItem Header="4. 門檻設定與場次比對" ToolTip="調整判定標準，並把多場測試並排比較">
                     <Border Style="{StaticResource CardStyle}" CornerRadius="0,8,8,8">
                         <Grid>
                             <Grid.RowDefinitions>
@@ -719,7 +808,10 @@
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
                                     <Grid Grid.Row="0" Margin="0,0,0,8">
-                                        <TextBlock Text="硬體規格適配與升級門檻設定（調整滑桿即即時重新判定所有設備 PASS / 警戒 / 建議升級）" FontSize="13" FontWeight="SemiBold"/>
+                                        <StackPanel>
+                                            <TextBlock Text="硬體規格適配與升級門檻設定（調整滑桿即即時重新判定所有設備 PASS / 警戒 / 建議升級）" FontSize="13" FontWeight="SemiBold"/>
+                                            <TextBlock Text="設定會自動保存在執行檔旁的 analyzer-settings.json。團隊請使用同一份門檻，判定結果才會一致。" FontSize="11.5" Foreground="#71717A" Margin="0,2,0,0"/>
+                                        </StackPanel>
                                         <Button Content="重設預設門檻 (70% / 80%)" HorizontalAlignment="Right" Style="{StaticResource DarkBtn}" Padding="10,3" FontSize="11.5" Command="{Binding ResetThresholdsCommand}"/>
                                     </Grid>
                                     <Grid Grid.Row="1">
@@ -756,26 +848,32 @@
                             </StackPanel>
 
                             <!-- 並排差異比對表 -->
-                            <DataGrid Grid.Row="2" ItemsSource="{Binding ComparisonRows}">
+                            <DataGrid Grid.Row="2" ItemsSource="{Binding ComparisonRows}" ScrollViewer.HorizontalScrollBarVisibility="Auto">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="場次" Binding="{Binding SessionLabel}" Width="140"/>
-                                    <DataGridTextColumn Header="設備名稱" Binding="{Binding DeviceName}" Width="135"/>
-                                    <DataGridTextColumn Header="CPU 型號" Binding="{Binding CpuModel}" Width="195"/>
-                                    <DataGridTextColumn Header="記憶體" Binding="{Binding RamSpec}" Width="105"/>
-                                    <DataGridTextColumn Header="時長" Binding="{Binding DurationText}" Width="65"/>
-                                    <DataGridTextColumn Header="CPU P95" Binding="{Binding CpuP95, StringFormat={}{0:0.0}%}" Width="75"/>
-                                    <DataGridTextColumn Header="CPU P95 差異" Binding="{Binding CpuP95DeltaText}" Width="115"/>
-                                    <DataGridTextColumn Header="RAM Peak%" Binding="{Binding RamPeakPercent, StringFormat={}{0:0}%}" Width="85"/>
-                                    <DataGridTextColumn Header="RAM 差異" Binding="{Binding RamPeakDeltaText}" Width="115"/>
-                                    <DataGridTemplateColumn Header="適配判定" Width="*">
+                                    <DataGridTemplateColumn Header="判定" Width="90">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <Border HorizontalAlignment="Left" CornerRadius="4" Padding="6,2" Background="{Binding VerdictColorHex}">
+                                                <Border HorizontalAlignment="Left" CornerRadius="4" Padding="6,2" Background="{Binding VerdictColorHex}" ToolTip="{Binding VerdictPlain}">
                                                     <TextBlock Text="{Binding VerdictBadge}" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
                                                 </Border>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="設備名稱" Binding="{Binding DeviceName}" Width="135"/>
+                                    <DataGridTextColumn Header="CPU 型號" Binding="{Binding CpuModel}" Width="195"/>
+                                    <DataGridTextColumn Header="記憶體" Binding="{Binding RamSpec}" Width="105"/>
+                                    <DataGridTextColumn Header="時長" Binding="{Binding DurationText}" Width="65"/>
+                                    <DataGridTextColumn Header="CPU P95" Binding="{Binding CpuP95, StringFormat={}{0:0.0}%}" Width="75">
+                                        <DataGridTextColumn.HeaderStyle>
+                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                <Setter Property="ToolTip" Value="P95：測試期間 95% 的時間，使用率都低於這個數字。比「最高值」更能代表常態下的高負載，本工具以它判定處理器是否足夠。"/>
+                                            </Style>
+                                        </DataGridTextColumn.HeaderStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="CPU P95 差異" Binding="{Binding CpuP95DeltaText}" Width="115"/>
+                                    <DataGridTextColumn Header="RAM Peak%" Binding="{Binding RamPeakPercent, StringFormat={}{0:0}%}" Width="85"/>
+                                    <DataGridTextColumn Header="RAM 差異" Binding="{Binding RamPeakDeltaText}" Width="115"/>
                                 </DataGrid.Columns>
                             </DataGrid>
                         </Grid>

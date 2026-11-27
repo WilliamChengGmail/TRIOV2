@@ -6,6 +6,8 @@ namespace TRIOV2.PerformanceAnalyzer.Models;
 public enum SizingLevel
 {
     NoData,
+    /// <summary>測試時間過短（例如誤觸開始／停止），不足以判斷硬體是否足夠。</summary>
+    InsufficientData,
     Pass,
     Warning,
     UpgradeRequired
@@ -21,11 +23,26 @@ public sealed class SizingVerdict
     public string BadgeText { get; init; } = "未判定";
     public string ReasonSummary { get; init; } = string.Empty;
     public string Recommendation { get; init; } = string.Empty;
+
+    /// <summary>給非技術讀者的一句白話結論（不含 P95 等術語）。</summary>
+    public string PlainSummary { get; init; } = string.Empty;
+
+    /// <summary>精簡燈號文字（側欄、表格用）。</summary>
+    public string ShortLabel => Level switch
+    {
+        SizingLevel.Pass => "通過",
+        SizingLevel.Warning => "接近上限",
+        SizingLevel.UpgradeRequired => "建議升級",
+        SizingLevel.InsufficientData => "資料不足",
+        _ => "無數據"
+    };
+
     public string BadgeColorHex => Level switch
     {
         SizingLevel.Pass => "#10B981",
         SizingLevel.Warning => "#F59E0B",
         SizingLevel.UpgradeRequired => "#EF4444",
+        SizingLevel.InsufficientData => "#52525B",
         _ => "#64748B"
     };
 }
