@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Globalization;
 using System.Windows.Input;
 using PerformanceAnalysis.App.Infrastructure;
@@ -59,6 +59,10 @@ public sealed class SessionDetailViewModel : ObservableObject
     public IReadOnlyList<GanttRowViewModel> GanttRows { get; }
 
     public IReadOnlyList<DiagnosticRowViewModel> Diagnostics { get; }
+
+    public HealthViewModel Health => _health ??= new HealthViewModel(Session);
+
+    private HealthViewModel? _health;
 
     public IReadOnlyList<DiagnosticRowViewModel> InfoDiagnostics { get; }
 

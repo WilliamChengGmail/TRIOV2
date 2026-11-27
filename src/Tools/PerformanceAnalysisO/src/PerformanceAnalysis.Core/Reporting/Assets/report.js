@@ -395,6 +395,100 @@
             <div class="detail">${esc(detail)}</div>
         </div>`;
 
+    const HEALTH_TONE = { Good: "green", Attention: "amber", Problem: "red", Insufficient: "muted" };
+    const HEALTH_ORDER = ["Problem", "Attention", "Good", "Insufficient"];
+    const healthOf = session => session.health || { level: "Good", levelText: "—", confidence: "—", headline: "", findings: [] };
+    const healthBadge = session => {
+        const health = healthOf(session);
+        return `<span class="badge ${HEALTH_TONE[health.level] || "muted"} verdict-badge">${esc(health.levelText)}</span>`;
+    };
+
+    const healthSummary = sessions => {
+        const counts = Object.fromEntries(HEALTH_ORDER.map(level => [level, 0]));
+        sessions.forEach(session => { counts[healthOf(session).level] = (counts[healthOf(session).level] || 0) + 1; });
+        const labels = { Problem: "異常", Attention: "注意", Good: "良好", Insufficient: "資料不足" };
+        const hints = {
+            Problem: "有效能問題，建議 SW 檢查",
+            Attention: "可運作，但有項目需留意",
+            Good: "沒有發現問題",
+            Insufficient: "紀錄太短或缺檔，不列入判斷"
+        };
+        const usable = sessions.length - counts.Insufficient;
+        const sentence = !sessions.length
+            ? "沒有場次資料。"
+            : usable === 0
+                ? `共 ${sessions.length} 場紀錄，但都屬於資料不足，暫時無法判斷效能。`
+                : counts.Problem > 0
+                    ? `可判斷的 ${usable} 場中，有 ${counts.Problem} 場發現效能問題，需要 SW 進一步檢查。`
+                    : counts.Attention > 0
+                        ? `可判斷的 ${usable} 場都能正常運作，其中 ${counts.Attention} 場有項目建議留意。`
+                        : `可判斷的 ${usable} 場效能表現皆正常。`;
+
+        return `
+            <div class="card verdict-summary">
+                <div class="card-title"><h2>結論摘要</h2><span class="sub">依「設定」中的門檻自動判定</span></div>
+                <p class="verdict-sentence">${esc(sentence)}</p>
+                <div class="verdict-counts">
+                    ${HEALTH_ORDER.map(level => `
+                        <div class="verdict-count ${HEALTH_TONE[level]}">
+                            <div class="n">${counts[level]}</div>
+                            <div class="t">${labels[level]}</div>
+                            <div class="h">${hints[level]}</div>
+                        </div>`).join("")}
+                </div>
+                ${readingGuide()}
+            </div>`;
+    };
+
+    const readingGuide = () => `
+        <details class="guide no-print">
+            <summary>第一次看這份報告？這裡說明怎麼讀</summary>
+            <div class="guide-body">
+                <p><b>先看燈號，再看原因。</b>每一場測試都有一個結論：</p>
+                <ul>
+                    <li><span class="badge green">良好</span> 沒有發現需要處理的問題。</li>
+                    <li><span class="badge amber">注意</span> 可以正常運作，但有項目建議追蹤，例如記憶體用量持續上升。</li>
+                    <li><span class="badge red">異常</span> 發現效能問題，例如處理器長時間滿載、記憶體接近用盡，需要 SW 檢查。</li>
+                    <li><span class="badge muted">資料不足</span> 紀錄太短或缺檔，這一場不適合拿來下結論。</li>
+                </ul>
+                <p><b>常見名詞：</b></p>
+                <ul>
+                    <li><b>CPU（處理器）使用率</b>：電腦運算能力用掉多少，越高越忙；長時間接近 100% 就可能卡頓。</li>
+                    <li><b>RAM（記憶體）</b>：程式執行時占用的工作空間（GB）。用量一路上升且不回落，可能是記憶體洩漏。</li>
+                    <li><b>基準場次</b>：被指定為「標準答案」的一場測試；Δ（差異）欄位表示和基準相比多了或少了多少。紅色＝變差、綠色＝變好。</li>
+                    <li><b>資料可信度</b>：紀錄是否完整。可信度「中」代表有小缺漏，結論仍可參考。</li>
+                </ul>
+                <p><b>想看細節？</b>點表格中的任一場次，就會進入單場次頁，看到判定原因、建議動作與完整圖表。</p>
+            </div>
+        </details>`;
+
+    const healthCard = session => {
+        const health = healthOf(session);
+        const findings = health.findings || [];
+        const items = findings.map(finding => `
+            <li class="finding ${esc((finding.impact || "").toLowerCase())}">
+                <div class="finding-head">
+                    <span class="badge ${finding.impact === "Problem" ? "red" : finding.impact === "Attention" ? "amber" : "muted"}">${esc(finding.category)}</span>
+                    <b>${esc(finding.title)}</b>
+                </div>
+                <div>${esc(finding.explanation)}</div>
+                <div class="finding-action">建議：${esc(finding.suggestion)}</div>
+                <div class="finding-detail mono">${esc(finding.code)} ・ ${esc(finding.detail)}</div>
+            </li>`).join("");
+
+        return `
+            <div class="card section verdict-card ${HEALTH_TONE[health.level] || "muted"}">
+                <div class="verdict-head">
+                    <span class="verdict-light ${HEALTH_TONE[health.level] || "muted"}">${esc(health.levelText)}</span>
+                    <div>
+                        <div class="verdict-headline">${esc(health.headline)}</div>
+                        <div class="muted">資料可信度：${esc(health.confidence)}${findings.length ? ` ・ 共 ${findings.length} 項發現` : ""}</div>
+                    </div>
+                </div>
+                ${findings.length ? `<ul class="findings">${items}</ul>` : ""}
+            </div>`;
+    };
+
     const renderOverviewView = () => {
         const sessions = filteredSessions();
         const devices = state.deviceKey === "all"
@@ -411,8 +505,10 @@
                 ${kpi("檢測場次", sessions.length, device ? "目前裝置的場次" : "已載入的監測場次", "")}
                 ${kpi("裝置數量", devices.length, "依裝置指紋分組", "teal")}
                 ${kpi("任務種類", taskCount, "跨場次任務種類", "green")}
-                ${kpi("需要注意", warnings + errors, `${warnings} 警告 ・ ${errors} 錯誤`, "amber")}
+                ${kpi("需追蹤場次", sessions.filter(s => ["Problem", "Attention"].includes(healthOf(s).level)).length, `技術警告 ${warnings} ・ 錯誤 ${errors}`, "amber")}
             </div>
+
+            <div class="section">${healthSummary(sessions)}</div>
 
             <div class="grid two section">
                 <div class="card">
@@ -456,6 +552,7 @@
             return `
                 <tr class="clickable" data-action="open-session" data-key="${esc(session.sessionKey)}">
                     <td>${esc(session.folderName)}</td>
+                    <td class="center" title="${esc(healthOf(session).headline)}">${healthBadge(session)}</td>
                     <td class="nowrap">${esc(session.deviceDisplay)}</td>
                     <td class="nowrap">${dateTime(session.startTime)}</td>
                     <td class="num">${duration(session.durationSeconds)}</td>
@@ -474,7 +571,7 @@
         return `
             <table>
                 <thead><tr>
-                    <th>場次</th><th>裝置</th><th>開始</th><th class="num">時長</th>
+                    <th>場次</th><th class="center">結論</th><th>裝置</th><th>開始</th><th class="num">時長</th>
                     <th class="num">CPU 平均</th><th class="num">CPU 最高</th><th class="num">ΔCPU</th>
                     <th class="num">RAM 平均</th><th class="num">RAM 最高</th><th class="num">ΔRAM</th>
                     <th class="num">任務</th><th class="num">警告</th><th class="center">基準</th>
@@ -588,6 +685,7 @@
                         <h2>${esc(session.folderName)}</h2>
                         <div class="badges">
                             <span class="badge teal">${esc(session.deviceDisplay)}</span>
+                            ${healthBadge(session)}
                             ${isBaseline ? `<span class="badge amber">★ 基準場次</span>` : ""}
                             ${session.warningCount + session.errorCount > 0 ? `<span class="badge amber">${session.warningCount} 警告 ・ ${session.errorCount} 錯誤</span>` : ""}
                             ${labels}
@@ -607,6 +705,8 @@
                     </div>
                 </div>
             </div>
+
+            ${healthCard(session)}
 
             <div class="grid kpi section">
                 ${kpi("CPU 平均", pct(session.metrics.cpuAvg), `最高 ${pct(session.metrics.cpuMax)} ・ p95 ${pct(session.metrics.cpuP95)}`, "")}
@@ -856,6 +956,7 @@
 
             return `<tr>
                 <td>${esc(session.folderName)}${isBaseline ? " ★" : ""}</td>
+                <td class="center">${healthBadge(session)}</td>
                 <td class="nowrap">${esc(session.deviceDisplay)}</td>
                 <td class="nowrap">${dateTime(session.startTime)}</td>
                 <td class="num">${num(session.metrics.cpuAvg)}</td>
@@ -876,7 +977,7 @@
         return `<div class="table-wrap tall">
             <table>
                 <thead><tr>
-                    <th>場次</th><th>裝置</th><th>開始</th><th class="num">CPU 平均</th><th class="num">ΔCPU</th><th class="num">CPU 最高</th>
+                    <th>場次</th><th class="center">結論</th><th>裝置</th><th>開始</th><th class="num">CPU 平均</th><th class="num">ΔCPU</th><th class="num">CPU 最高</th>
                     <th class="num">RAM 平均</th><th class="num">ΔRAM</th><th class="num">RAM 最高</th>
                     <th class="num">磁碟</th><th class="num">網路</th><th class="num">辨識</th><th class="num">Δ辨識</th>
                     <th class="num">完整率</th><th class="num">警告</th>

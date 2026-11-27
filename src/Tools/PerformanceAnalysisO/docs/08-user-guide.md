@@ -20,7 +20,7 @@ publish\TRIOV2.PerformanceAnalysis.exe
 ### 從原始碼啟動
 
 ```powershell
-cd D:\TRIOV2\Tools\PerformanceAnalysisO
+cd D:\TRIOV2\src\Tools\PerformanceAnalysisO
 dotnet run --project src\PerformanceAnalysis.App
 ```
 

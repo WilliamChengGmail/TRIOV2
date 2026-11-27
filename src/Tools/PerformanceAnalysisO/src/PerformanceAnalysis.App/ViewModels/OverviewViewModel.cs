@@ -1,4 +1,4 @@
-using System.Windows.Input;
+﻿using System.Windows.Input;
 using PerformanceAnalysis.App.Infrastructure;
 using PerformanceAnalysis.Core.Models;
 
@@ -88,7 +88,52 @@ public sealed class OverviewViewModel : ObservableObject
 
     public string TaskDetailText => "跨場次任務種類";
 
-    public string WarningDetailText => WarningCount == 0 ? "沒有需要注意的項目" : "缺少檔案／資料品質／任務未執行";
+    public string WarningDetailText => $"技術警告 {WarningCount} 筆（細節見單場次）";
+
+    public int FollowUpCount => Sessions.Count(session =>
+        session.Health.Level is Core.Analysis.HealthLevel.Problem or Core.Analysis.HealthLevel.Attention);
+
+    public string FollowUpCountText => FollowUpCount.ToString();
+
+    public string FollowUpDetailText => FollowUpCount == 0 ? "沒有需要追蹤的場次" : "結論為「異常」或「注意」";
+
+    public int ProblemCount => CountLevel(Core.Analysis.HealthLevel.Problem);
+
+    public int AttentionCount => CountLevel(Core.Analysis.HealthLevel.Attention);
+
+    public int GoodCount => CountLevel(Core.Analysis.HealthLevel.Good);
+
+    public int InsufficientCount => CountLevel(Core.Analysis.HealthLevel.Insufficient);
+
+    /// <summary>給主管看的一句話結論。</summary>
+    public string SummarySentence
+    {
+        get
+        {
+            var usable = SessionCount - InsufficientCount;
+            if (SessionCount == 0)
+            {
+                return "尚未載入任何場次。";
+            }
+
+            if (usable == 0)
+            {
+                return $"共 {SessionCount} 場紀錄，但都屬於資料不足（太短或缺檔），暫時無法判斷效能。";
+            }
+
+            if (ProblemCount > 0)
+            {
+                return $"可判斷的 {usable} 場中，有 {ProblemCount} 場發現效能問題，需要 SW 進一步檢查。";
+            }
+
+            return AttentionCount > 0
+                ? $"可判斷的 {usable} 場都能正常運作，其中 {AttentionCount} 場有項目建議留意。"
+                : $"可判斷的 {usable} 場效能表現皆正常。";
+        }
+    }
+
+    private int CountLevel(Core.Analysis.HealthLevel level)
+        => Sessions.Count(session => session.Health.Level == level);
 
     public string SourcePath => _main.SourcePath;
 

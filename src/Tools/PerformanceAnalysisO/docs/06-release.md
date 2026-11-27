@@ -107,7 +107,7 @@ publish\TRIOV2.PerformanceAnalysis.exe --metadata-dir "out\publish-metadata" --s
 專案：
 
 ```
-D:\TRIOV2\Tools\PerformanceAnalysisO
+D:\TRIOV2\src\Tools\PerformanceAnalysisO
 ```
 
 ## 5. 測試

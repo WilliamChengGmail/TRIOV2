@@ -412,3 +412,39 @@ details[open] summary { margin-bottom: 8px; }
     .coverage-wrap { max-height: none; overflow: visible; }
     details { display: none; }
 }
+
+/* Verdict (plain-language conclusion for non-technical readers) */
+.verdict-badge { font-weight: 600; }
+.verdict-sentence { margin: 4px 0 12px; font-size: 15px; font-weight: 600; }
+.verdict-counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.verdict-count { border: 1px solid var(--border); border-left-width: 4px; border-radius: 8px; padding: 10px 12px; background: var(--panel-2); }
+.verdict-count .n { font-size: 24px; font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.verdict-count .t { font-weight: 600; margin-top: 2px; }
+.verdict-count .h { color: var(--muted); font-size: 12px; }
+.verdict-count.red { border-left-color: var(--red); } .verdict-count.red .n { color: var(--red); }
+.verdict-count.amber { border-left-color: var(--amber); } .verdict-count.amber .n { color: var(--amber); }
+.verdict-count.green { border-left-color: var(--green); } .verdict-count.green .n { color: var(--green); }
+.verdict-count.muted { border-left-color: var(--muted); }
+.guide { margin-top: 12px; }
+.guide summary { cursor: pointer; color: var(--primary); font-weight: 600; }
+.guide-body ul { margin: 4px 0 10px; padding-left: 20px; }
+.guide-body li { margin: 4px 0; }
+.verdict-card { border-left-width: 5px; }
+.verdict-card.red { border-left-color: var(--red); }
+.verdict-card.amber { border-left-color: var(--amber); }
+.verdict-card.green { border-left-color: var(--green); }
+.verdict-card.muted { border-left-color: var(--muted); }
+.verdict-head { display: flex; gap: 14px; align-items: center; }
+.verdict-light { flex: none; min-width: 84px; text-align: center; padding: 8px 12px; border-radius: 999px; font-size: 16px; font-weight: 700; color: #fff; background: var(--muted); }
+.verdict-light.red { background: var(--red); }
+.verdict-light.amber { background: var(--amber); color: #1a1a1a; }
+.verdict-light.green { background: var(--green); }
+.verdict-headline { font-size: 16px; font-weight: 600; }
+.findings { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.finding { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--panel-2); }
+.finding-head { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.finding-action { margin-top: 4px; color: var(--primary); }
+.finding-detail { margin-top: 4px; color: var(--muted); }
+@media print {
+    .verdict-light { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

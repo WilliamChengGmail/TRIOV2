@@ -224,12 +224,13 @@ internal static class Program
 
         var headers = new[]
         {
-            "資料夾", "開始時間", "時長", "樣本", "CPU 平均/最高", "RAM 平均/最高 GB", "任務", "警告"
+            "資料夾", "結論", "開始時間", "時長", "樣本", "CPU 平均/最高", "RAM 平均/最高 GB", "任務", "警告"
         };
 
         var rows = sessions.Select(session => new[]
         {
             session.FolderName,
+            HealthAssessor.Assess(session).LevelText,
             session.StartTime.ToString("MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
             FormatDuration(session.Duration),
             session.Aggregate.SampleCount.ToString(CultureInfo.InvariantCulture),
@@ -243,8 +244,8 @@ internal static class Program
         ConsoleTable.Write(
             headers,
             rows,
-            rightAligned: new[] { false, false, true, true, true, true, true, true },
-            maxWidths: new[] { 26, 14, 8, 6, 16, 18, 5, 5 });
+            rightAligned: new[] { false, false, false, true, true, true, true, true, true },
+            maxWidths: new[] { 26, 8, 14, 8, 6, 16, 18, 5, 5 });
 
         Console.WriteLine();
         Console.WriteLine("裝置");

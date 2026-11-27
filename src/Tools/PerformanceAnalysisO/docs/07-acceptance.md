@@ -2,7 +2,7 @@
 
 版本：0.5.0  
 日期：2026-11-13  
-專案：`D:\TRIOV2\Tools\PerformanceAnalysisO`
+專案：`D:\TRIOV2\src\Tools\PerformanceAnalysisO`
 
 ## 1. 建置與測試
 

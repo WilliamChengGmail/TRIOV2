@@ -1,4 +1,4 @@
-<UserControl x:Class="PerformanceAnalysis.App.Views.SessionDetailView"
+﻿<UserControl x:Class="PerformanceAnalysis.App.Views.SessionDetailView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -131,34 +131,124 @@
                 </Grid>
             </Border>
 
+            <!-- 結論：白話燈號、原因與建議（給非技術讀者） -->
+            <Border Background="{StaticResource CardBackgroundBrush}"
+                    BorderBrush="{Binding Health.Brush}"
+                    BorderThickness="5,1,1,1"
+                    CornerRadius="10"
+                    Padding="16,12"
+                    Margin="0,12,0,0">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Background="{Binding Health.Brush}"
+                                CornerRadius="16"
+                                Padding="16,5"
+                                MinWidth="84"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Health.LevelText}"
+                                       Foreground="{Binding Health.ForegroundBrush}"
+                                       FontSize="16"
+                                       FontWeight="Bold"
+                                       HorizontalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Health.Headline}"
+                                       FontSize="15"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding Health.ConfidenceText}"
+                                       Style="{StaticResource MutedText}"
+                                       Margin="0,2,0,0" />
+                        </StackPanel>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding Health.Findings}"
+                                  Margin="0,10,0,0"
+                                  Visibility="{Binding Health.HasFindings, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{StaticResource PanelBackgroundBrush}"
+                                        BorderBrush="{StaticResource BorderDarkBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="10,8"
+                                        Margin="0,0,0,6">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Border BorderBrush="{Binding Brush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4"
+                                                    Padding="6,0"
+                                                    Margin="0,0,8,0"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding CategoryText}"
+                                                           Foreground="{Binding Brush}"
+                                                           FontSize="11" />
+                                            </Border>
+                                            <TextBlock Text="{Binding Title}"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{StaticResource TextPrimaryBrush}" />
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Explanation}"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,4,0,0" />
+                                        <TextBlock Text="{Binding SuggestionText}"
+                                                   Foreground="{StaticResource PrimaryBlueBrush}"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,3,0,0" />
+                                        <TextBlock Text="{Binding DetailText}"
+                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                   FontFamily="Consolas"
+                                                   FontSize="11"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,3,0,0" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
             <!-- KPI -->
             <UniformGrid Columns="3" Margin="0,12,0,0">
                 <controls:KpiCard Title="CPU 平均"
+                                  ToolTip="處理器平均忙碌程度。越高代表電腦越忙；p95＝95% 的時間都低於此值，長時間接近 100% 可能卡頓。"
                                   Value="{Binding CpuAverageText}"
                                   Detail="{Binding CpuDetailText}"
                                   Accent="{StaticResource PrimaryBlueBrush}"
                                   Margin="0,0,8,8" />
                 <controls:KpiCard Title="RAM 平均"
+                                  ToolTip="程式執行占用的記憶體（GB）。使用率接近 100% 時系統會變慢。"
                                   Value="{Binding RamAverageText}"
                                   Detail="{Binding RamDetailText}"
                                   Accent="{StaticResource PurpleBrush}"
                                   Margin="0,0,8,8" />
                 <controls:KpiCard Title="磁碟峰值"
+                                  ToolTip="受監測程式讀寫硬碟的最高速度。"
                                   Value="{Binding DiskPeakText}"
                                   Detail="{Binding DiskDetailText}"
                                   Accent="{StaticResource AccentTealBrush}"
                                   Margin="0,0,0,8" />
                 <controls:KpiCard Title="網路峰值"
+                                  ToolTip="受監測程式網路傳輸的最高速度。"
                                   Value="{Binding NetworkPeakText}"
                                   Detail="{Binding NetworkDetailText}"
                                   Accent="{StaticResource SuccessGreenBrush}"
                                   Margin="0,0,8,0" />
                 <controls:KpiCard Title="辨識時長"
+                                  ToolTip="每次影像辨識所花的時間，越短越好。"
                                   Value="{Binding RecognitionText}"
                                   Detail="{Binding RecognitionDetailText}"
                                   Accent="{StaticResource WarningYellowBrush}"
                                   Margin="0,0,8,0" />
                 <controls:KpiCard Title="資料完整率"
+                                  ToolTip="實際記錄到的秒數 ÷ 應記錄的秒數。低於 100% 代表中途有漏記。"
                                   Value="{Binding CompletenessText}"
                                   Detail="{Binding CompletenessDetailText}"
                                   Accent="{StaticResource PrimaryBlueBrush}" />

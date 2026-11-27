@@ -1,3 +1,4 @@
+﻿using PerformanceAnalysis.Core.Analysis;
 using PerformanceAnalysis.Core.Models;
 
 namespace PerformanceAnalysis.Core.Reporting;
@@ -93,6 +94,8 @@ public static class ReportBuilder
             })
             .ToList();
 
+        var health = HealthAssessor.Assess(session);
+
         return new ReportSession
         {
             SessionKey = session.SessionKey,
@@ -117,7 +120,26 @@ public static class ReportBuilder
             WarningCount = session.Diagnostics.Count(diagnostic =>
                 diagnostic.Severity == DiagnosticSeverity.Warning),
             ErrorCount = session.Diagnostics.Count(diagnostic =>
-                diagnostic.Severity == DiagnosticSeverity.Error)
+                diagnostic.Severity == DiagnosticSeverity.Error),
+            Health = new ReportHealth
+            {
+                Level = health.Level.ToString(),
+                LevelText = health.LevelText,
+                Confidence = health.ConfidenceText,
+                Headline = health.Headline,
+                Findings = health.Findings
+                    .Select(finding => new ReportFinding
+                    {
+                        Impact = finding.Impact.ToString(),
+                        Category = HealthAssessor.CategoryText(finding.Category),
+                        Code = finding.Code,
+                        Title = finding.Title,
+                        Explanation = finding.Explanation,
+                        Suggestion = finding.Suggestion,
+                        Detail = finding.Detail
+                    })
+                    .ToList()
+            }
         };
     }
 

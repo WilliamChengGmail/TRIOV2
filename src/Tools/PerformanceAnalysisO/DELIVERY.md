@@ -1,8 +1,8 @@
 # TRIOV2 效能分析 — 交付說明
 
-版本：**0.5.0**  
-日期：2026-11-13  
-專案：`D:\TRIOV2\Tools\PerformanceAnalysisO`  
+版本：**0.6.0**  
+日期：2026-11-27  
+專案：`D:\TRIOV2\src\Tools\PerformanceAnalysisO`  
 狀態：**M0–M5 全部完成**
 
 ## 1. 交付物
@@ -29,7 +29,7 @@ publish\TRIOV2.PerformanceAnalysis.exe
 ### 從原始碼
 
 ```powershell
-cd D:\TRIOV2\Tools\PerformanceAnalysisO
+cd D:\TRIOV2\src\Tools\PerformanceAnalysisO
 dotnet run --project src\PerformanceAnalysis.App
 ```
 
@@ -51,14 +51,15 @@ D:\TRIOV2\publish_tools\Logs
 | `docs\06-release.md` | M5 設定、快取、發佈 |
 | `docs\07-acceptance.md` | **交付驗收清單** |
 | `docs\08-user-guide.md` | **操作手冊（快速版）** |
-| `docs\09-manual.md` | **完整使用手冊（含圖表意義與判定依據）** |
+| `docs\09-manual.md` | 完整技術手冊（0.5 版，圖表意義與判定依據） |
+| `docs\10-user-manual.md` | **使用手冊（0.6，依角色分章：主管／測試人員／SW）** |
 
 ## 4. 驗收摘要
 
 | 項目 | 結果 |
 |---|---|
 | Release 建置 | 0 警告、0 錯誤 |
-| 測試 | 32 通過 |
+| 測試 | 38 通過 |
 | 真實場次 | 10 場 |
 | 裝置分組 | 3 組（含未識別） |
 | 任務種類 | 8 |
@@ -79,6 +80,7 @@ D:\TRIOV2\publish_tools\Logs
 
 ## 5. 主要功能
 
+- **結論燈號**（良好／注意／異常／資料不足）、白話原因與建議、資料可信度（0.6 新增）
 - 單場次／多場次／`裝置/場次` 掃描
 - 容錯 CSV（BOM、Big5、註解列、重複時間戳記、缺檔）
 - CPU／RAM／磁碟／網路／辨識統計

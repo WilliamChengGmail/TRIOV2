@@ -1,4 +1,4 @@
-<UserControl x:Class="PerformanceAnalysis.App.Views.OverviewView"
+﻿<UserControl x:Class="PerformanceAnalysis.App.Views.OverviewView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -10,6 +10,7 @@
              d:DesignWidth="1100">
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -31,13 +32,73 @@
                               Detail="{Binding TaskDetailText}"
                               Accent="{StaticResource SuccessGreenBrush}"
                               Margin="0,0,8,0" />
-            <controls:KpiCard Title="需要注意"
-                              Value="{Binding WarningCountText}"
-                              Detail="{Binding WarningDetailText}"
+            <controls:KpiCard Title="需追蹤場次"
+                              Value="{Binding FollowUpCountText}"
+                              Detail="{Binding FollowUpDetailText}"
+                              ToolTip="{Binding WarningDetailText}"
                               Accent="{StaticResource WarningYellowBrush}" />
         </UniformGrid>
 
+        <!-- 結論摘要：給非技術讀者的一句話與燈號分布 -->
         <Border Grid.Row="1"
+                Background="{StaticResource CardBackgroundBrush}"
+                BorderBrush="{StaticResource BorderDarkBrush}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Margin="16,0,16,12"
+                Padding="14,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="結論摘要" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="{Binding SummarySentence}"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Margin="0,4,0,0"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="燈號說明：異常＝有效能問題需 SW 檢查；注意＝可運作但需追蹤；良好＝沒有發現問題；資料不足＝紀錄太短或缺檔。雙擊列可看原因與建議。"
+                               Style="{StaticResource MutedText}"
+                               Margin="0,4,0,0"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                    <StackPanel.Resources>
+                        <Style x:Key="CountNumber" TargetType="TextBlock">
+                            <Setter Property="FontSize" Value="22" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                            <Setter Property="HorizontalAlignment" Value="Center" />
+                        </Style>
+                        <Style x:Key="CountLabel" TargetType="TextBlock">
+                            <Setter Property="FontSize" Value="11.5" />
+                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+                            <Setter Property="HorizontalAlignment" Value="Center" />
+                        </Style>
+                    </StackPanel.Resources>
+                    <StackPanel Width="70">
+                        <TextBlock Text="{Binding ProblemCount}" Foreground="{StaticResource ErrorRedBrush}" Style="{StaticResource CountNumber}" />
+                        <TextBlock Text="異常" Style="{StaticResource CountLabel}" />
+                    </StackPanel>
+                    <StackPanel Width="70">
+                        <TextBlock Text="{Binding AttentionCount}" Foreground="{StaticResource WarningYellowBrush}" Style="{StaticResource CountNumber}" />
+                        <TextBlock Text="注意" Style="{StaticResource CountLabel}" />
+                    </StackPanel>
+                    <StackPanel Width="70">
+                        <TextBlock Text="{Binding GoodCount}" Foreground="{StaticResource SuccessGreenBrush}" Style="{StaticResource CountNumber}" />
+                        <TextBlock Text="良好" Style="{StaticResource CountLabel}" />
+                    </StackPanel>
+                    <StackPanel Width="70">
+                        <TextBlock Text="{Binding InsufficientCount}" Foreground="{StaticResource TextMutedBrush}" Style="{StaticResource CountNumber}" />
+                        <TextBlock Text="資料不足" Style="{StaticResource CountLabel}" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2"
                 Background="{StaticResource CardBackgroundBrush}"
                 BorderBrush="{StaticResource BorderDarkBrush}"
                 BorderThickness="1"
@@ -56,11 +117,11 @@
                                HorizontalAlignment="Right"
                                VerticalAlignment="Center" />
                 </Grid>
-                <sp:WpfPlot x:Name="TrendPlot" Grid.Row="1" Height="190" Margin="0,8,0,0" />
+                <sp:WpfPlot x:Name="TrendPlot" Grid.Row="1" Height="150" Margin="0,8,0,0" />
             </Grid>
         </Border>
 
-        <Border Grid.Row="2"
+        <Border Grid.Row="3"
                 Background="{StaticResource CardBackgroundBrush}"
                 BorderBrush="{StaticResource BorderDarkBrush}"
                 BorderThickness="1"
@@ -90,6 +151,22 @@
                                   ScrollViewer.HorizontalScrollBarVisibility="Auto">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="資料夾" Binding="{Binding FolderName}" Width="140" />
+                                <DataGridTemplateColumn Header="結論" Width="86" SortMemberPath="Health.SortOrder">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{Binding Health.Brush}"
+                                                    CornerRadius="9"
+                                                    Padding="8,1"
+                                                    HorizontalAlignment="Left"
+                                                    ToolTip="{Binding Health.Headline}">
+                                                <TextBlock Text="{Binding Health.LevelText}"
+                                                           Foreground="{Binding Health.ForegroundBrush}"
+                                                           FontSize="11.5"
+                                                           FontWeight="SemiBold" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="裝置" Binding="{Binding DeviceDisplay}" Width="145" />
                                 <DataGridTextColumn Header="開始時間" Binding="{Binding StartTimeText}" Width="112" />
                                 <DataGridTextColumn Header="時長" Binding="{Binding DurationText}" Width="56" />

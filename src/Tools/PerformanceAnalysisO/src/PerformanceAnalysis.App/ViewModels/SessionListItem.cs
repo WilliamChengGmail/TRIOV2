@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Windows.Media;
 using PerformanceAnalysis.Core.Models;
 
@@ -19,6 +19,10 @@ public sealed class SessionListItem
     }
 
     public Session Session { get; }
+
+    public HealthViewModel Health => _health ??= new HealthViewModel(Session);
+
+    private HealthViewModel? _health;
 
     public string FolderName => Session.FolderName;
 

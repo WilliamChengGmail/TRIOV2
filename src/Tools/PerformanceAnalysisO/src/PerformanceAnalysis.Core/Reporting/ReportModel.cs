@@ -1,4 +1,4 @@
-namespace PerformanceAnalysis.Core.Reporting;
+﻿namespace PerformanceAnalysis.Core.Reporting;
 
 public sealed class ReportModel
 {
@@ -97,6 +97,38 @@ public sealed class ReportSession
     public int WarningCount { get; init; }
 
     public int ErrorCount { get; init; }
+
+    public ReportHealth Health { get; init; } = new();
+}
+
+public sealed class ReportHealth
+{
+    public string Level { get; init; } = "Good";
+
+    public string LevelText { get; init; } = string.Empty;
+
+    public string Confidence { get; init; } = string.Empty;
+
+    public string Headline { get; init; } = string.Empty;
+
+    public IReadOnlyList<ReportFinding> Findings { get; init; } = Array.Empty<ReportFinding>();
+}
+
+public sealed class ReportFinding
+{
+    public string Impact { get; init; } = string.Empty;
+
+    public string Category { get; init; } = string.Empty;
+
+    public string Code { get; init; } = string.Empty;
+
+    public string Title { get; init; } = string.Empty;
+
+    public string Explanation { get; init; } = string.Empty;
+
+    public string Suggestion { get; init; } = string.Empty;
+
+    public string Detail { get; init; } = string.Empty;
 }
 
 public sealed class ReportSessionMetrics

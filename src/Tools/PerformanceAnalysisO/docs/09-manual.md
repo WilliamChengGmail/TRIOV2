@@ -1,5 +1,7 @@
 # TRIOV2 效能分析器 使用手冊
 
+> **新版使用手冊請見 `10-user-manual.md`**（0.6 起新增結論燈號，並依主管／測試人員／SW 分章）。本文件保留 0.5 版的技術細節供參考。
+
 版本：0.5.0
 適用：TRIOV2 效能分析（WPF 桌面工具與 CLI）
 
@@ -59,7 +61,7 @@ publish\TRIOV2.PerformanceAnalysis.exe
 ### 從原始碼
 
 ```powershell
-cd D:\TRIOV2\Tools\PerformanceAnalysisO
+cd D:\TRIOV2\src\Tools\PerformanceAnalysisO
 dotnet run --project src\PerformanceAnalysis.App
 ```
 
