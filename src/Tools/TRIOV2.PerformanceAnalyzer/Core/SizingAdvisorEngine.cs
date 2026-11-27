@@ -180,11 +180,23 @@ public static class SizingAdvisorEngine
         PlainSummary = "測試時間太短，無法判斷硬體是否足夠，請重新進行完整測試。"
     };
 
+    /// <summary>效能記錄器本身，不列為「主要耗能程序」（它是量測工具，不是受測對象）。</summary>
+    private const string RecorderProcessName = "TRIOV2.ResourceSimulator";
+
+    /// <summary>
+    /// 累計 CPU 用量（運行中平均 CPU × 運行秒數）。比「瞬間最高值」更能反映誰真正吃掉處理器。
+    /// </summary>
+    public static double CpuWorkScore(TaskBenchmarkSummary task) => task.ActiveCpuAvg * task.ActiveSamples;
+
     private static string BuildTopTaskHint(IReadOnlyList<TaskBenchmarkSummary> tasks)
     {
-        var topCpuTask = tasks.Where(t => t.ActiveSamples > 0).OrderByDescending(t => t.ActiveCpuMax).FirstOrDefault();
+        var topCpuTask = tasks
+            .Where(t => t.ActiveSamples > 0
+                        && !string.Equals(t.TaskName, RecorderProcessName, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(CpuWorkScore)
+            .FirstOrDefault();
         if (topCpuTask == null || topCpuTask.ActiveCpuMax <= 5.0) return string.Empty;
 
-        return $"主要耗能程序：{topCpuTask.TaskName} (CPU Peak {topCpuTask.ActiveCpuMax:0.0}%, RAM Peak {topCpuTask.ActiveRamMaxMb:0.#} MB)";
+        return $"主要耗能程序：{topCpuTask.TaskName} (運行中 CPU 平均 {topCpuTask.ActiveCpuAvg:0.0}% / Peak {topCpuTask.ActiveCpuMax:0.0}%, RAM Peak {topCpuTask.ActiveRamMaxMb:0.#} MB)";
     }
 }

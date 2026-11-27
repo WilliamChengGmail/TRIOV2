@@ -18,6 +18,8 @@ public sealed class SettingsViewModel : ObservableObject
     private string _sampleGapSecondsText = string.Empty;
     private string _duplicateRatioPercentText = string.Empty;
     private string _taskRestartThresholdText = string.Empty;
+    private string _cpuP95AttentionPercentText = string.Empty;
+    private string _cpuP95ProblemPercentText = string.Empty;
     private string _statusText = "修改後按「儲存並重新分析」。";
 
     public SettingsViewModel(MainViewModel main, AnalysisOptions options)
@@ -102,6 +104,18 @@ public sealed class SettingsViewModel : ObservableObject
         set => SetProperty(ref _taskRestartThresholdText, value);
     }
 
+    public string CpuP95AttentionPercentText
+    {
+        get => _cpuP95AttentionPercentText;
+        set => SetProperty(ref _cpuP95AttentionPercentText, value);
+    }
+
+    public string CpuP95ProblemPercentText
+    {
+        get => _cpuP95ProblemPercentText;
+        set => SetProperty(ref _cpuP95ProblemPercentText, value);
+    }
+
     public string StatusText
     {
         get => _statusText;
@@ -134,6 +148,8 @@ public sealed class SettingsViewModel : ObservableObject
         SampleGapSecondsText = options.SampleGapSeconds.ToString(CultureInfo.InvariantCulture);
         DuplicateRatioPercentText = options.DuplicateRatioPercent.ToString("0.##", CultureInfo.InvariantCulture);
         TaskRestartThresholdText = options.TaskRestartThreshold.ToString(CultureInfo.InvariantCulture);
+        CpuP95AttentionPercentText = options.CpuP95AttentionPercent.ToString("0.##", CultureInfo.InvariantCulture);
+        CpuP95ProblemPercentText = options.CpuP95ProblemPercent.ToString("0.##", CultureInfo.InvariantCulture);
     }
 
     private async Task SaveAsync()
@@ -214,6 +230,20 @@ public sealed class SettingsViewModel : ObservableObject
             return false;
         }
 
+        if (!TryDouble(CpuP95AttentionPercentText, out var p95Attention) || p95Attention is < 1 or > 100)
+        {
+            error = "CPU P95 注意門檻必須是 1–100 的數字。";
+            return false;
+        }
+
+        if (!TryDouble(CpuP95ProblemPercentText, out var p95Problem) || p95Problem < p95Attention || p95Problem > 100)
+        {
+            error = "CPU P95 異常門檻必須介於注意門檻與 100 之間。";
+            return false;
+        }
+
+        options.CpuP95AttentionPercent = p95Attention;
+        options.CpuP95ProblemPercent = p95Problem;
         options.CpuHighPercent = cpuHigh;
         options.CpuHighSustainedSeconds = cpuSeconds;
         options.RamHighPercent = ramHigh;

@@ -457,12 +457,15 @@ public sealed class MainAnalyzerViewModel : ViewModelBase
         {
             aliases[SelectedSession.FolderPath] = normalized;
         }
-        LogSessionScanner.SaveAliases(_scannedRootPath, aliases);
+        bool saved = LogSessionScanner.SaveAliases(_scannedRootPath, aliases);
 
         RecalculateAggregates();
-        StatusMessage = normalized == null
+        string message = normalized == null
             ? $"已清除 {SelectedSession.SessionName} 的自訂設備標籤"
             : $"已將 {SelectedSession.SessionName} 歸類為「{normalized}」";
+        StatusMessage = saved
+            ? message
+            : $"{message}（注意：無法寫入 {_scannedRootPath}，資料夾可能為唯讀，重新開啟後設定會遺失）";
     }
 
     private void ResetDefaultThresholds()

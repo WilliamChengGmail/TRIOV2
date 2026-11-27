@@ -141,6 +141,30 @@
                         </StackPanel>
 
                         <StackPanel Width="250" Margin="0,0,16,14">
+                            <TextBlock Text="CPU P95 注意門檻 (%)" Style="{StaticResource MutedText}" />
+                            <TextBox Text="{Binding CpuP95AttentionPercentText, UpdateSourceTrigger=PropertyChanged}"
+                                     Margin="0,4,0,0"
+                                     Tag="70" />
+                            <TextBlock Text="95% 的時間 CPU 都低於此值才算有餘裕；達到時列為「注意」"
+                                       Style="{StaticResource MutedText}"
+                                       FontSize="10.5"
+                                       TextWrapping="Wrap"
+                                       Margin="0,3,0,0" />
+                        </StackPanel>
+
+                        <StackPanel Width="250" Margin="0,0,16,14">
+                            <TextBlock Text="CPU P95 異常門檻 (%)" Style="{StaticResource MutedText}" />
+                            <TextBox Text="{Binding CpuP95ProblemPercentText, UpdateSourceTrigger=PropertyChanged}"
+                                     Margin="0,4,0,0"
+                                     Tag="85" />
+                            <TextBlock Text="CPU P95 超過此值列為「異常」（與硬體分析器的升級線一致）"
+                                       Style="{StaticResource MutedText}"
+                                       FontSize="10.5"
+                                       TextWrapping="Wrap"
+                                       Margin="0,3,0,0" />
+                        </StackPanel>
+
+                        <StackPanel Width="250" Margin="0,0,16,14">
                             <TextBlock Text="任務重啟門檻 (次)" Style="{StaticResource MutedText}" />
                             <TextBox Text="{Binding TaskRestartThresholdText, UpdateSourceTrigger=PropertyChanged}"
                                      Margin="0,4,0,0"

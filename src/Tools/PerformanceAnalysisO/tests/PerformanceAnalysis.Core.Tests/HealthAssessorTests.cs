@@ -39,6 +39,27 @@ public sealed class HealthAssessorTests
     }
 
     [Fact]
+    public void NeverRunTaskDoesNotChangeLevelButLowersConfidence()
+    {
+        var health = HealthAssessor.Assess(CreateSession(
+            new Diagnostic(DiagnosticSeverity.Warning, "TASK_NEVER_RUN", "alt task")));
+
+        Assert.Equal(HealthLevel.Good, health.Level);
+        Assert.Equal(DataConfidence.Medium, health.Confidence);
+    }
+
+    [Theory]
+    [InlineData("CPU_P95_ELEVATED", HealthLevel.Attention)]
+    [InlineData("CPU_P95_HIGH", HealthLevel.Problem)]
+    public void CpuP95FindingsMapToLevels(string code, HealthLevel expected)
+    {
+        var health = HealthAssessor.Assess(CreateSession(
+            new Diagnostic(DiagnosticSeverity.Warning, code, "cpu")));
+
+        Assert.Equal(expected, health.Level);
+    }
+
+    [Fact]
     public void ShortSessionIsInsufficientEvenWithProblems()
     {
         var health = HealthAssessor.Assess(CreateSession(

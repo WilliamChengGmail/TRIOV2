@@ -10,11 +10,7 @@ public sealed class ReportBuilderTests
     [Fact]
     public void BuildsReportFromExistingLogs()
     {
-        const string root = @"D:\TRIOV2\publish_tools\Logs";
-        if (!Directory.Exists(root))
-        {
-            return;
-        }
+        var root = FixtureLogs.Root;
 
         var scan = SessionScanner.Scan(root);
         var store = new SessionMetadataStore(Path.Combine(
@@ -31,12 +27,14 @@ public sealed class ReportBuilderTests
             root,
             new DateTimeOffset(2026, 11, 13, 12, 0, 0, TimeSpan.FromHours(8)));
 
-        Assert.Equal(10, report.Sessions.Count);
-        Assert.Equal(3, report.Devices.Count);
-        Assert.Equal(8, report.TaskCatalog.Count);
+        Assert.Equal(2, report.Sessions.Count);
+        Assert.Single(report.Devices);
+        Assert.Equal(9, report.TaskCatalog.Count);
 
-        var target = Assert.Single(report.Sessions, session => session.FolderName == "20261112_150751");
-        Assert.Equal(625, target.SampleCount);
+        var target = Assert.Single(report.Sessions, session => session.FolderName == FixtureLogs.GapSession);
+        Assert.Equal(1002, target.SampleCount);
+        Assert.Equal("Problem", target.Health.Level);
+        Assert.NotEmpty(target.Health.Headline);
         Assert.True(target.Series.Count >= 8);
         Assert.NotEmpty(target.Tasks);
 
@@ -53,11 +51,7 @@ public sealed class ReportBuilderTests
     [Fact]
     public void BuildsSingleFileHtmlWithoutExternalScripts()
     {
-        const string root = @"D:\TRIOV2\publish_tools\Logs";
-        if (!Directory.Exists(root))
-        {
-            return;
-        }
+        var root = FixtureLogs.Root;
 
         var scan = SessionScanner.Scan(root);
         var store = new SessionMetadataStore(Path.Combine(

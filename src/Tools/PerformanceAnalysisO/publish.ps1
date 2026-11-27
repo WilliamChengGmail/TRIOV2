@@ -10,8 +10,14 @@ $ErrorActionPreference = "Stop"
 $project = Join-Path $PSScriptRoot "src\PerformanceAnalysis.App\PerformanceAnalysis.App.csproj"
 $outputPath = Join-Path $PSScriptRoot $Output
 
+# Clean old build output but keep user data: Metadata (baselines, notes, aliases, settings)
 if (Test-Path $outputPath) {
-    Remove-Item $outputPath -Recurse -Force
+    Get-ChildItem -LiteralPath $outputPath -Force |
+        Where-Object { $_.Name -ne "Metadata" } |
+        Remove-Item -Recurse -Force
+    if (Test-Path (Join-Path $outputPath "Metadata")) {
+        Write-Host "Keeping existing Metadata folder (baselines, notes, settings)." -ForegroundColor Yellow
+    }
 }
 
 Write-Host "Publishing $project ..." -ForegroundColor Cyan

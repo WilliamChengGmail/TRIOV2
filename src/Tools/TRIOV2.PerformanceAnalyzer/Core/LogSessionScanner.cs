@@ -54,17 +54,20 @@ public static class LogSessionScanner
         }
     }
 
-    public static void SaveAliases(string rootPath, Dictionary<string, string> aliases)
+    /// <returns>是否成功寫入（資料夾唯讀或被占用時回傳 false）。</returns>
+    public static bool SaveAliases(string rootPath, Dictionary<string, string> aliases)
     {
         try
         {
-            if (!Directory.Exists(rootPath)) return;
+            if (!Directory.Exists(rootPath)) return false;
             string file = Path.Combine(rootPath, AliasFileName);
             string json = JsonSerializer.Serialize(aliases, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(file, json);
+            return true;
         }
         catch
         {
+            return false;
         }
     }
 

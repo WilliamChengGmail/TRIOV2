@@ -48,6 +48,26 @@ public sealed class TaskRunBuilderTests
         Assert.Equal(TimeSpan.FromSeconds(1), runs[1].Duration);
     }
 
+    [Fact]
+    public void ShortRecordingGapWithSamePidIsNotARestart()
+    {
+        // 記錄器週期性漏記 2–3 秒：PID 與狀態不變，不應被算成重啟
+        var samples = new[]
+        {
+            Sample(0, TaskRunState.Running, 100),
+            Sample(1, TaskRunState.Running, 100),
+            Sample(4, TaskRunState.Running, 100),
+            Sample(5, TaskRunState.Running, 100),
+            Sample(8, TaskRunState.Running, 100)
+        };
+
+        var runs = TaskRunBuilder.Build(samples);
+
+        var run = Assert.Single(runs);
+        Assert.Equal(TimeSpan.FromSeconds(9), run.Duration);
+        Assert.Equal(5, run.SampleCount);
+    }
+
     private static TaskSample Sample(int second, TaskRunState state, int pid = 100)
     {
         return new TaskSample(

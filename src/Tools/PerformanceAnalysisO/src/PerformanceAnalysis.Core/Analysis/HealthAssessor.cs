@@ -23,6 +23,18 @@ public static class HealthAssessor
             "處理器長時間滿載",
             "電腦的運算能力有一段時間幾乎被用完，使用者可能感覺操作變慢、畫面卡頓。",
             "請 SW 對照「任務 CPU」圖，找出該時段占用最高的程式並評估優化。"),
+        ["CPU_P95_HIGH"] = new(
+            FindingImpact.Problem,
+            FindingCategory.Performance,
+            "處理器負載過高",
+            "測試期間處理器大部分時間都很忙，幾乎沒有餘裕，使用時容易變慢或卡頓。",
+            "請 SW 對照「任務 CPU」圖找出主要耗用的程式；若程式已無優化空間，評估提高 CPU 等級。"),
+        ["CPU_P95_ELEVATED"] = new(
+            FindingImpact.Attention,
+            FindingCategory.Performance,
+            "處理器負載偏高",
+            "處理器忙碌的時間偏多，目前仍可運作，但餘裕不多；之後功能增加可能會不夠用。",
+            "以完整操作流程再測一次確認；新採購機台建議選擇較高等級的 CPU。"),
         ["RAM_HIGH"] = new(
             FindingImpact.Problem,
             FindingCategory.Performance,
@@ -42,11 +54,11 @@ public static class HealthAssessor
             "測試期間記憶體用量一路增加；若長時間運作，可能逐漸把記憶體耗盡（常見原因為記憶體洩漏）。",
             "安排更長時間的測試，確認是否持續上升或會趨於平穩。"),
         ["TASK_NEVER_RUN"] = new(
-            FindingImpact.Attention,
+            FindingImpact.ConfidenceOnly,
             FindingCategory.Coverage,
             "有受監測的程式沒有執行",
-            "清單中的程式在整場測試都沒有啟動，因此這部分的效能無法評估。",
-            "確認該程式本來就不需要啟動；若應該啟動，請檢查測試流程。"),
+            "清單中的程式在整場測試都沒有啟動，這部分的效能無法評估。常見原因是監測清單同時列了替代程式（例如 TRIOV2.App 與 TRIO2026.App），每次只會執行其中一個。",
+            "若該程式本來就不需要啟動可忽略；若應該啟動，請檢查測試流程。"),
         ["NO_TASK_LOGS"] = new(
             FindingImpact.Attention,
             FindingCategory.Coverage,
@@ -141,7 +153,7 @@ public static class HealthAssessor
 
         var confidence = insufficient
             ? DataConfidence.Low
-            : findings.Any(finding => finding.Category == FindingCategory.DataQuality)
+            : findings.Any(finding => finding.Impact == FindingImpact.ConfidenceOnly)
                 ? DataConfidence.Medium
                 : DataConfidence.High;
 

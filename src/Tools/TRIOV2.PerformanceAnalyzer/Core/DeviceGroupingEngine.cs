@@ -124,8 +124,9 @@ public static class DeviceGroupingEngine
             });
         }
 
+        // 依累計 CPU 用量排序（平均 × 運行時間），避免偶發尖峰的程式排在最前面
         return result
-            .OrderByDescending(t => t.ActiveCpuMax)
+            .OrderByDescending(SizingAdvisorEngine.CpuWorkScore)
             .ThenByDescending(t => t.ActiveRamMaxMb)
             .ToList();
     }

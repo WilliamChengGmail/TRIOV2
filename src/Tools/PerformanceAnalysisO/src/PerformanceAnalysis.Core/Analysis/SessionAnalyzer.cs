@@ -590,6 +590,26 @@ public sealed class SessionAnalyzer
                 $"{folderName}: CPU ≥ {options.CpuHighPercent:0.#}% 持續約 {highRun} 秒（門檻 {options.CpuHighSustainedSeconds} 秒）"));
         }
 
+        // 長時間偏高的負載：以 P95 判斷（排除瞬間尖峰），與 PerformanceAnalyzer 標準一致
+        if (aggregate.CpuTotal.HasData && duration.TotalSeconds >= options.ShortSessionSeconds)
+        {
+            var p95 = aggregate.CpuTotal.P95;
+            if (p95 > options.CpuP95ProblemPercent)
+            {
+                diagnostics.Add(new Diagnostic(
+                    DiagnosticSeverity.Warning,
+                    "CPU_P95_HIGH",
+                    $"{folderName}: CPU P95 {p95:0.#}%，超過門檻 {options.CpuP95ProblemPercent:0.#}%（平均 {aggregate.CpuTotal.Mean:0.#}%）"));
+            }
+            else if (p95 >= options.CpuP95AttentionPercent)
+            {
+                diagnostics.Add(new Diagnostic(
+                    DiagnosticSeverity.Warning,
+                    "CPU_P95_ELEVATED",
+                    $"{folderName}: CPU P95 {p95:0.#}%，達注意門檻 {options.CpuP95AttentionPercent:0.#}%（平均 {aggregate.CpuTotal.Mean:0.#}%）"));
+            }
+        }
+
         if (aggregate.MemoryUsagePercent.HasData
             && aggregate.MemoryUsagePercent.Max >= options.RamHighPercent)
         {
@@ -607,7 +627,7 @@ public sealed class SessionAnalyzer
                 diagnostics.Add(new Diagnostic(
                     DiagnosticSeverity.Warning,
                     "RAM_HIGH",
-                    $"{folderName}: 可用記憶體最低 {minimumAvailable:0.##} GB，低於門檻 {options.AvailableRamMinimumGb:0.##} GB"));
+                    $"{folderName}: 可用記憶體最低 {minimumAvailable:0.00} GB，已達或低於門檻 {options.AvailableRamMinimumGb:0.00} GB"));
             }
         }
 
