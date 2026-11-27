@@ -18,7 +18,11 @@ public sealed class AnalysisOptions
 
     public double RamHighPercent { get; set; } = 90;
 
+    /// <summary>測試期間最低可用記憶體 ≤ 此值（GB）列為「異常」。</summary>
     public double AvailableRamMinimumGb { get; set; } = 1;
+
+    /// <summary>測試期間最低可用記憶體低於此值（GB）列為「注意」；≥ 此值才算有餘裕。</summary>
+    public double AvailableRamAttentionGb { get; set; } = 2;
 
     public double MemoryGrowthMbPerMinute { get; set; } = 20;
 
@@ -41,6 +45,7 @@ public sealed class AnalysisOptions
             CpuP95ProblemPercent = CpuP95ProblemPercent,
             RamHighPercent = RamHighPercent,
             AvailableRamMinimumGb = AvailableRamMinimumGb,
+            AvailableRamAttentionGb = AvailableRamAttentionGb,
             MemoryGrowthMbPerMinute = MemoryGrowthMbPerMinute,
             MemoryGrowthMinimumSeconds = MemoryGrowthMinimumSeconds,
             TaskRestartThreshold = TaskRestartThreshold,
@@ -57,6 +62,7 @@ public sealed class AnalysisOptions
         CpuP95ProblemPercent = Math.Clamp(CpuP95ProblemPercent, CpuP95AttentionPercent, 100);
         RamHighPercent = Math.Clamp(RamHighPercent, 1, 100);
         AvailableRamMinimumGb = Math.Clamp(AvailableRamMinimumGb, 0, 1024);
+        AvailableRamAttentionGb = Math.Clamp(AvailableRamAttentionGb, AvailableRamMinimumGb, 1024);
         MemoryGrowthMbPerMinute = Math.Clamp(MemoryGrowthMbPerMinute, 0, 1_000_000);
         MemoryGrowthMinimumSeconds = Math.Clamp(MemoryGrowthMinimumSeconds, 0, 86400);
         TaskRestartThreshold = Math.Clamp(TaskRestartThreshold, 0, 10000);

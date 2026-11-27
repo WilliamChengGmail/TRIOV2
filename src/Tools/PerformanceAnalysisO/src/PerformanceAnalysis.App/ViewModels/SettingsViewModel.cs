@@ -19,6 +19,7 @@ public sealed class SettingsViewModel : ObservableObject
     private string _duplicateRatioPercentText = string.Empty;
     private string _taskRestartThresholdText = string.Empty;
     private string _cpuP95AttentionPercentText = string.Empty;
+    private string _availableRamAttentionGbText = string.Empty;
     private string _cpuP95ProblemPercentText = string.Empty;
     private string _statusText = "修改後按「儲存並重新分析」。";
 
@@ -104,6 +105,12 @@ public sealed class SettingsViewModel : ObservableObject
         set => SetProperty(ref _taskRestartThresholdText, value);
     }
 
+    public string AvailableRamAttentionGbText
+    {
+        get => _availableRamAttentionGbText;
+        set => SetProperty(ref _availableRamAttentionGbText, value);
+    }
+
     public string CpuP95AttentionPercentText
     {
         get => _cpuP95AttentionPercentText;
@@ -149,6 +156,7 @@ public sealed class SettingsViewModel : ObservableObject
         DuplicateRatioPercentText = options.DuplicateRatioPercent.ToString("0.##", CultureInfo.InvariantCulture);
         TaskRestartThresholdText = options.TaskRestartThreshold.ToString(CultureInfo.InvariantCulture);
         CpuP95AttentionPercentText = options.CpuP95AttentionPercent.ToString("0.##", CultureInfo.InvariantCulture);
+        AvailableRamAttentionGbText = options.AvailableRamAttentionGb.ToString("0.##", CultureInfo.InvariantCulture);
         CpuP95ProblemPercentText = options.CpuP95ProblemPercent.ToString("0.##", CultureInfo.InvariantCulture);
     }
 
@@ -242,6 +250,15 @@ public sealed class SettingsViewModel : ObservableObject
             return false;
         }
 
+        if (!TryDouble(AvailableRamAttentionGbText, out var availableAttention)
+            || availableAttention < availableRam
+            || availableAttention > 1024)
+        {
+            error = "可用記憶體注意門檻必須大於或等於異常門檻（GB）。";
+            return false;
+        }
+
+        options.AvailableRamAttentionGb = availableAttention;
         options.CpuP95AttentionPercent = p95Attention;
         options.CpuP95ProblemPercent = p95Problem;
         options.CpuHighPercent = cpuHigh;

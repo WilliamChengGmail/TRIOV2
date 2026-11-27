@@ -37,8 +37,8 @@ public sealed class MainAnalyzerViewModel : ViewModelBase
     // 驗收門檻設定
     private double _cpuP95PassLimit = 70.0;
     private double _cpuP95WarnLimit = 85.0;
-    private double _ramPeakPassLimit = 80.0;
-    private double _ramPeakWarnLimit = 90.0;
+    private double _availableRamPassGb = 2.0;
+    private double _availableRamUpgradeGb = 1.0;
 
     // 總覽 KPI
     private string _kpiDeviceCountText = "0 台";
@@ -231,27 +231,29 @@ public sealed class MainAnalyzerViewModel : ViewModelBase
         }
     }
 
-    public double RamPeakPassLimit
+    /// <summary>最低可用記憶體 ≥ 此值（GB）才算有餘裕。</summary>
+    public double AvailableRamPassGb
     {
-        get => _ramPeakPassLimit;
+        get => _availableRamPassGb;
         set
         {
-            double clamped = Math.Clamp(value, 40, 95);
-            if (SetProperty(ref _ramPeakPassLimit, clamped))
+            double clamped = Math.Clamp(value, 0.5, 16);
+            if (SetProperty(ref _availableRamPassGb, clamped))
             {
-                if (_ramPeakWarnLimit < clamped) RamPeakWarnLimit = Math.Min(99, clamped + 10);
+                if (_availableRamUpgradeGb > clamped) AvailableRamUpgradeGb = clamped;
                 RecalculateAggregates();
             }
         }
     }
 
-    public double RamPeakWarnLimit
+    /// <summary>最低可用記憶體 ≤ 此值（GB）建議升級。</summary>
+    public double AvailableRamUpgradeGb
     {
-        get => _ramPeakWarnLimit;
+        get => _availableRamUpgradeGb;
         set
         {
-            double clamped = Math.Clamp(value, _ramPeakPassLimit, 99);
-            if (SetProperty(ref _ramPeakWarnLimit, clamped))
+            double clamped = Math.Clamp(value, 0, _availableRamPassGb);
+            if (SetProperty(ref _availableRamUpgradeGb, clamped))
             {
                 RecalculateAggregates();
             }
@@ -304,8 +306,8 @@ public sealed class MainAnalyzerViewModel : ViewModelBase
         var saved = AnalyzerSettingsStore.Load();
         _cpuP95PassLimit = Math.Clamp(saved.CpuP95PassLimit, 30, 95);
         _cpuP95WarnLimit = Math.Clamp(saved.CpuP95WarnLimit, _cpuP95PassLimit, 99);
-        _ramPeakPassLimit = Math.Clamp(saved.RamPeakPassLimit, 40, 95);
-        _ramPeakWarnLimit = Math.Clamp(saved.RamPeakWarnLimit, _ramPeakPassLimit, 99);
+        _availableRamPassGb = Math.Clamp(saved.AvailableRamPassGb, 0.5, 16);
+        _availableRamUpgradeGb = Math.Clamp(saved.AvailableRamUpgradeGb, 0, _availableRamPassGb);
         _lastSavedThresholds = ThresholdSignature(CurrentThresholds());
     }
 
@@ -472,12 +474,12 @@ public sealed class MainAnalyzerViewModel : ViewModelBase
     {
         _cpuP95PassLimit = 70.0;
         _cpuP95WarnLimit = 85.0;
-        _ramPeakPassLimit = 80.0;
-        _ramPeakWarnLimit = 90.0;
+        _availableRamPassGb = 2.0;
+        _availableRamUpgradeGb = 1.0;
         OnPropertyChanged(nameof(CpuP95PassLimit));
         OnPropertyChanged(nameof(CpuP95WarnLimit));
-        OnPropertyChanged(nameof(RamPeakPassLimit));
-        OnPropertyChanged(nameof(RamPeakWarnLimit));
+        OnPropertyChanged(nameof(AvailableRamPassGb));
+        OnPropertyChanged(nameof(AvailableRamUpgradeGb));
         RecalculateAggregates();
     }
 
@@ -586,6 +588,7 @@ public sealed class MainAnalyzerViewModel : ViewModelBase
                 CpuMax = s.CpuMax,
                 RamPeakPercent = s.RamPeakPercent,
                 RamPeakGb = s.RamMaxGb,
+                MinAvailableText = s.HasAvailableMemory ? $"{s.MinAvailableGb:0.0} GB" : "--",
                 CpuP95DeltaText = cpuDelta,
                 RamPeakDeltaText = ramDelta,
                 VerdictBadge = s.Verdict.ShortLabel,
@@ -688,14 +691,14 @@ public sealed class MainAnalyzerViewModel : ViewModelBase
     }
 
     private static string ThresholdSignature(EvaluationThresholds t)
-        => $"{t.CpuP95PassLimit}|{t.CpuP95WarnLimit}|{t.RamPeakPassLimit}|{t.RamPeakWarnLimit}";
+        => $"{t.CpuP95PassLimit}|{t.CpuP95WarnLimit}|{t.AvailableRamPassGb}|{t.AvailableRamUpgradeGb}";
 
     private EvaluationThresholds CurrentThresholds() => new()
     {
         CpuP95PassLimit = CpuP95PassLimit,
         CpuP95WarnLimit = CpuP95WarnLimit,
-        RamPeakPassLimit = RamPeakPassLimit,
-        RamPeakWarnLimit = RamPeakWarnLimit
+        AvailableRamPassGb = AvailableRamPassGb,
+        AvailableRamUpgradeGb = AvailableRamUpgradeGb
     };
 
     private static string FormatSignedDelta(double delta, string unit)

@@ -54,15 +54,18 @@ public sealed class EvaluationThresholds
 {
     public double CpuP95PassLimit { get; set; } = 70.0;
     public double CpuP95WarnLimit { get; set; } = 85.0;
-    public double RamPeakPassLimit { get; set; } = 80.0;
-    public double RamPeakWarnLimit { get; set; } = 90.0;
+    /// <summary>測試期間最低可用記憶體 ≥ 此值（GB）才算有餘裕；低於此值為「接近上限」。</summary>
+    public double AvailableRamPassGb { get; set; } = 2.0;
+
+    /// <summary>測試期間最低可用記憶體 ≤ 此值（GB）為「建議升級」。</summary>
+    public double AvailableRamUpgradeGb { get; set; } = 1.0;
 
     public EvaluationThresholds Clone() => new()
     {
         CpuP95PassLimit = CpuP95PassLimit,
         CpuP95WarnLimit = CpuP95WarnLimit,
-        RamPeakPassLimit = RamPeakPassLimit,
-        RamPeakWarnLimit = RamPeakWarnLimit
+        AvailableRamPassGb = AvailableRamPassGb,
+        AvailableRamUpgradeGb = AvailableRamUpgradeGb
     };
 }
 

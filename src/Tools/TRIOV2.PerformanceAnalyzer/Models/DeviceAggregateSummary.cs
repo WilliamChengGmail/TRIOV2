@@ -22,6 +22,9 @@ public sealed class DeviceAggregateSummary
     public double PeakRamPercentAcrossRuns { get; init; }
     public double PeakRamGbAcrossRuns { get; init; }
 
+    /// <summary>已勾選測試中最低的可用記憶體（GB）；無資料時為 NaN。</summary>
+    public double MinAvailableGbAcrossRuns { get; init; } = double.NaN;
+
     public SizingVerdict Verdict { get; init; } = new();
     public IReadOnlyList<TaskBenchmarkSummary> TopTasks { get; init; } = Array.Empty<TaskBenchmarkSummary>();
     public IReadOnlyList<BenchmarkSession> Sessions { get; init; } = Array.Empty<BenchmarkSession>();
@@ -32,4 +35,6 @@ public sealed class DeviceAggregateSummary
 
     public string CpuSummaryDisplay => $"{AvgCpuAcrossRuns:0.0}% / {MaxCpuP95AcrossRuns:0.0}% / {PeakCpuAcrossRuns:0.0}%";
     public string RamPeakDisplay => $"{PeakRamGbAcrossRuns:0.00} GB ({PeakRamPercentAcrossRuns:0}%)";
+
+    public string MinAvailableDisplay => double.IsNaN(MinAvailableGbAcrossRuns) ? "--" : $"{MinAvailableGbAcrossRuns:0.0} GB";
 }

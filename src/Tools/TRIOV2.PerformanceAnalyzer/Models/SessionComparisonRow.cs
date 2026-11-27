@@ -18,6 +18,7 @@ public sealed class SessionComparisonRow
     public double CpuMax { get; init; }
     public double RamPeakPercent { get; init; }
     public double RamPeakGb { get; init; }
+    public string MinAvailableText { get; init; } = "--";
 
     public string CpuP95DeltaText { get; init; } = "--";
     public string RamPeakDeltaText { get; init; } = "--";

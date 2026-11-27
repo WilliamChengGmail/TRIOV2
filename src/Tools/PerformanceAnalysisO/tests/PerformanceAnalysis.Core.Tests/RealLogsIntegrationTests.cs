@@ -72,6 +72,9 @@ public sealed class RealLogsIntegrationTests
 
         var load = Assert.Single(sessions, session => session.FolderName == FixtureLogs.LoadSession);
         Assert.Contains(load.Diagnostics, diagnostic => diagnostic.Code == "CPU_P95_ELEVATED");
+        // 最低可用記憶體 1.4 GB：介於 1 與 2 GB 之間 → 注意（記憶體餘裕偏少）
+        Assert.Contains(load.Diagnostics, diagnostic => diagnostic.Code == "RAM_LOW_HEADROOM");
+        Assert.DoesNotContain(load.Diagnostics, diagnostic => diagnostic.Code == "RAM_HIGH");
         Assert.Equal(HealthLevel.Attention, HealthAssessor.Assess(load).Level);
     }
 

@@ -30,7 +30,7 @@ public partial class FleetComparisonChart : UserControl
 
     public static readonly DependencyProperty RamPassLimitProperty =
         DependencyProperty.Register(nameof(RamPassLimit), typeof(double), typeof(FleetComparisonChart),
-            new PropertyMetadata(80.0, (d, _) => ((FleetComparisonChart)d).Redraw()));
+            new PropertyMetadata(0.0, (d, _) => ((FleetComparisonChart)d).Redraw()));
 
     public IReadOnlyList<DeviceAggregateSummary>? Devices
     {
@@ -231,6 +231,7 @@ public partial class FleetComparisonChart : UserControl
 
     private void DrawHorizontalLimit(double padL, double padT, double plotW, double plotH, double pct, Color color)
     {
+        if (pct <= 0) return;
         double y = padT + plotH * (1.0 - Math.Clamp(pct, 0, 100) / 100.0);
         ChartCanvas.Children.Add(new Line
         {

@@ -42,6 +42,8 @@ public static class DeviceGroupingEngine
             double avgRamPct = includedRuns.Count > 0 ? includedRuns.Average(s => s.RamAvgPercent) : 0;
             double peakRamPct = includedRuns.Count > 0 ? includedRuns.Max(s => s.RamPeakPercent) : 0;
             double peakRamGb = includedRuns.Count > 0 ? includedRuns.Max(s => s.RamMaxGb) : 0;
+            var availableRuns = includedRuns.Where(s => s.HasAvailableMemory).ToList();
+            double minAvailableGb = availableRuns.Count > 0 ? availableRuns.Min(s => s.MinAvailableGb) : double.NaN;
 
             TimeSpan totalDur = TimeSpan.FromSeconds(includedRuns.Sum(s => s.Duration.TotalSeconds));
 
@@ -52,6 +54,8 @@ public static class DeviceGroupingEngine
                 maxCpuP95,
                 peakCpu,
                 peakRamPct,
+                minAvailableGb,
+                peakRamGb,
                 representative.HardwareProfile.MemoryInstalledGb,
                 thresholds,
                 topTasks,
@@ -73,6 +77,7 @@ public static class DeviceGroupingEngine
                 AvgRamPercentAcrossRuns = avgRamPct,
                 PeakRamPercentAcrossRuns = peakRamPct,
                 PeakRamGbAcrossRuns = peakRamGb,
+                MinAvailableGbAcrossRuns = minAvailableGb,
                 Verdict = verdict,
                 TopTasks = topTasks,
                 Sessions = allRuns

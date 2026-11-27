@@ -291,6 +291,7 @@ public partial class InteractiveTimelineChart : UserControl
 
     private void DrawThresholdLine(double pct, Color color, string text, double plotW)
     {
+        if (pct <= 0) return;
         double clamped = Math.Clamp(pct, 0, 100);
         double y = PadT + (PlotCanvas.ActualHeight - PadT - PadB) * (1.0 - clamped / 100.0);
         PlotCanvas.Children.Add(new Line

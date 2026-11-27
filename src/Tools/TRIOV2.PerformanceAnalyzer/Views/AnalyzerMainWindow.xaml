@@ -333,7 +333,7 @@
                                                                 </StackPanel>
                                                                 <Border Grid.Column="2" VerticalAlignment="Center" CornerRadius="3" Padding="5,1"
                                                                         Background="#27272A">
-                                                                    <TextBlock Text="{Binding RamPeakPercent, StringFormat=RAM {0:0}%}" FontSize="10.5" Foreground="#34D399"/>
+                                                                    <TextBlock Text="{Binding MinAvailableText}" ToolTip="測試期間最低可用記憶體（記憶體判定依據）；顏色同該次測試的燈號" FontSize="10.5" FontWeight="SemiBold" Foreground="{Binding Verdict.BadgeColorHex}"/>
                                                                 </Border>
                                                             </Grid>
                                                         </Border>
@@ -489,7 +489,14 @@
                                     <DataGridTextColumn Header="RAM Peak" Binding="{Binding RamPeakDisplay}" Width="125">
                                         <DataGridTextColumn.HeaderStyle>
                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-                                                <Setter Property="ToolTip" Value="RAM Peak：測試期間記憶體使用率的最高值。接近 100% 時電腦會明顯變慢。"/>
+                                                <Setter Property="ToolTip" Value="RAM Peak：測試期間記憶體用量與使用率的最高值（參考用）。記憶體判定看「最低可用記憶體」。"/>
+                                            </Style>
+                                        </DataGridTextColumn.HeaderStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="最低可用記憶體" Binding="{Binding MinAvailableDisplay}" Width="115">
+                                        <DataGridTextColumn.HeaderStyle>
+                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                <Setter Property="ToolTip" Value="測試期間剩下最少的可用記憶體（GB），記憶體判定的依據。≥ 2 GB 有餘裕，≤ 1 GB 建議升級。"/>
                                             </Style>
                                         </DataGridTextColumn.HeaderStyle>
                                     </DataGridTextColumn>
@@ -513,12 +520,11 @@
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="*"/>
                                     </Grid.RowDefinitions>
-                                    <TextBlock Text="跨設備負載比較長條圖 (橘虛線為 CPU P95 門檻 / 紅虛線為 RAM Peak 門檻)" FontSize="12" FontWeight="SemiBold" Foreground="#A1A1AA" Margin="4,0,0,4"/>
+                                    <TextBlock Text="跨設備負載比較長條圖（橘虛線為 CPU P95 門檻；記憶體以「最低可用記憶體 (GB)」判定，見上表）" FontSize="12" FontWeight="SemiBold" Foreground="#A1A1AA" Margin="4,0,0,4"/>
                                     <controls:FleetComparisonChart Grid.Row="1"
                                                                    ChartMode="Fleet"
                                                                    Devices="{Binding ChartDevices}"
-                                                                   CpuPassLimit="{Binding CpuP95PassLimit}"
-                                                                   RamPassLimit="{Binding RamPeakPassLimit}"/>
+                                                                   CpuPassLimit="{Binding CpuP95PassLimit}"/>
                                 </Grid>
                             </Border>
                         </Grid>
@@ -549,8 +555,7 @@
                             <Border Grid.Row="1" Background="#141416" BorderBrush="#2C2C32" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,10">
                                 <controls:FleetComparisonChart ChartMode="Trend"
                                                                TrendSessions="{Binding SelectedTrendDevice.Sessions}"
-                                                               CpuPassLimit="{Binding CpuP95PassLimit}"
-                                                               RamPassLimit="{Binding RamPeakPassLimit}"/>
+                                                               CpuPassLimit="{Binding CpuP95PassLimit}"/>
                             </Border>
 
                             <Grid Grid.Row="2">
@@ -568,6 +573,7 @@
                                         <DataGridTextColumn Header="CPU P95" Binding="{Binding CpuP95, StringFormat={}{0:0.0}%}" Width="75"/>
                                         <DataGridTextColumn Header="CPU Max" Binding="{Binding CpuMax, StringFormat={}{0:0.0}%}" Width="75"/>
                                         <DataGridTextColumn Header="RAM Peak" Binding="{Binding RamPeakPercent, StringFormat={}{0:0}%}" Width="80"/>
+                                        <DataGridTextColumn Header="最低可用" Binding="{Binding MinAvailableText}" Width="85"/>
                                         <DataGridTemplateColumn Header="結論" Width="90">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
@@ -707,7 +713,7 @@
                                     <controls:InteractiveTimelineChart x:Name="TimelineChart" Grid.Row="1"
                                                                        Session="{Binding SelectedSession}"
                                                                        CpuThreshold="{Binding CpuP95PassLimit}"
-                                                                       RamThreshold="{Binding RamPeakPassLimit}"/>
+                                                                       RamThreshold="0"/>
                                 </Grid>
                             </Border>
 
@@ -812,7 +818,7 @@
                                             <TextBlock Text="硬體規格適配與升級門檻設定（調整滑桿即即時重新判定所有設備 PASS / 警戒 / 建議升級）" FontSize="13" FontWeight="SemiBold"/>
                                             <TextBlock Text="設定會自動保存在執行檔旁的 analyzer-settings.json。團隊請使用同一份門檻，判定結果才會一致。" FontSize="11.5" Foreground="#71717A" Margin="0,2,0,0"/>
                                         </StackPanel>
-                                        <Button Content="重設預設門檻 (70% / 80%)" HorizontalAlignment="Right" Style="{StaticResource DarkBtn}" Padding="10,3" FontSize="11.5" Command="{Binding ResetThresholdsCommand}"/>
+                                        <Button Content="重設預設門檻 (CPU 70% / 記憶體 2 GB)" HorizontalAlignment="Right" Style="{StaticResource DarkBtn}" Padding="10,3" FontSize="11.5" Command="{Binding ResetThresholdsCommand}"/>
                                     </Grid>
                                     <Grid Grid.Row="1">
                                         <Grid.ColumnDefinitions>
@@ -831,10 +837,13 @@
 
                                         <StackPanel Grid.Column="2">
                                             <TextBlock FontSize="12" Foreground="#D4D4D8" Margin="0,0,0,4">
-                                                <Run Text="RAM 峰值安全上限 (PASS &lt; "/><Run Text="{Binding RamPeakPassLimit, StringFormat={}{0:0}%}" FontWeight="Bold" Foreground="#10B981"/>
-                                                <Run Text=" / 升級線 &gt; "/><Run Text="{Binding RamPeakWarnLimit, StringFormat={}{0:0}%}" FontWeight="Bold" Foreground="#EF4444"/><Run Text=")"/>
+                                                <Run Text="最低可用記憶體 (PASS ≥ "/><Run Text="{Binding AvailableRamPassGb, StringFormat={}{0:0.#} GB}" FontWeight="Bold" Foreground="#10B981"/>
+                                                <Run Text=" / 升級線 ≤ "/><Run Text="{Binding AvailableRamUpgradeGb, StringFormat={}{0:0.#} GB}" FontWeight="Bold" Foreground="#EF4444"/><Run Text=")"/>
                                             </TextBlock>
-                                            <Slider Minimum="50" Maximum="95" Value="{Binding RamPeakPassLimit, Mode=TwoWay}" TickFrequency="5" IsSnapToTickEnabled="True"/>
+                                            <Slider Minimum="1" Maximum="6" Value="{Binding AvailableRamPassGb, Mode=TwoWay}" TickFrequency="0.5" IsSnapToTickEnabled="True"
+                                                    ToolTip="安全線：最低可用記憶體低於此值為「接近上限」"/>
+                                            <Slider Minimum="0" Maximum="4" Value="{Binding AvailableRamUpgradeGb, Mode=TwoWay}" TickFrequency="0.5" IsSnapToTickEnabled="True" Margin="0,4,0,0"
+                                                    ToolTip="升級線：最低可用記憶體 ≤ 此值為「建議升級」（不會高於安全線）"/>
                                         </StackPanel>
                                     </Grid>
                                 </Grid>
@@ -872,6 +881,7 @@
                                         </DataGridTextColumn.HeaderStyle>
                                     </DataGridTextColumn>
                                     <DataGridTextColumn Header="CPU P95 差異" Binding="{Binding CpuP95DeltaText}" Width="115"/>
+                                    <DataGridTextColumn Header="最低可用記憶體" Binding="{Binding MinAvailableText}" Width="110"/>
                                     <DataGridTextColumn Header="RAM Peak%" Binding="{Binding RamPeakPercent, StringFormat={}{0:0}%}" Width="85"/>
                                     <DataGridTextColumn Header="RAM 差異" Binding="{Binding RamPeakDeltaText}" Width="115"/>
                                 </DataGrid.Columns>

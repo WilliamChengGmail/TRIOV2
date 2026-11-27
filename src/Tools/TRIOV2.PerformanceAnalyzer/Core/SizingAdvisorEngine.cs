@@ -30,7 +30,8 @@ public static class SizingAdvisorEngine
         return EvaluateMetrics(
             session.CpuP95,
             session.CpuMax,
-            session.RamPeakPercent,
+            session.MinAvailableGb,
+            session.RamMaxGb,
             session.HardwareProfile.MemoryInstalledGb,
             thresholds,
             topTaskHint);
@@ -40,6 +41,8 @@ public static class SizingAdvisorEngine
         double maxCpuP95AcrossRuns,
         double peakCpuAcrossRuns,
         double peakRamPercentAcrossRuns,
+        double minAvailableGbAcrossRuns,
+        double peakUsedGbAcrossRuns,
         double installedMemoryGb,
         EvaluationThresholds thresholds,
         IReadOnlyList<TaskBenchmarkSummary> topTasks,
@@ -72,7 +75,8 @@ public static class SizingAdvisorEngine
         return EvaluateMetrics(
             maxCpuP95AcrossRuns,
             peakCpuAcrossRuns,
-            peakRamPercentAcrossRuns,
+            minAvailableGbAcrossRuns,
+            peakUsedGbAcrossRuns,
             installedMemoryGb,
             thresholds,
             topTaskHint);
@@ -81,15 +85,19 @@ public static class SizingAdvisorEngine
     private static SizingVerdict EvaluateMetrics(
         double cpuP95,
         double cpuMax,
-        double ramPeakPct,
+        double minAvailableGb,
+        double peakUsedGb,
         double installedMemoryGb,
         EvaluationThresholds thresholds,
         string topTaskHint)
     {
+        // 記憶體以「最低可用記憶體（GB）」判定：TRIO V2 需要的記憶體量固定，百分比在不同容量的機器上意義不同；
+        // 記憶體用盡即使一瞬間也會換頁或關閉程式，所以取最低值（CPU 則用 P95 排除瞬間尖峰）。
+        bool ramKnown = !double.IsNaN(minAvailableGb);
         bool cpuUpgrade = cpuP95 > thresholds.CpuP95WarnLimit;
-        bool ramUpgrade = ramPeakPct > thresholds.RamPeakWarnLimit;
+        bool ramUpgrade = ramKnown && minAvailableGb <= thresholds.AvailableRamUpgradeGb;
         bool cpuWarn = !cpuUpgrade && cpuP95 >= thresholds.CpuP95PassLimit;
-        bool ramWarn = !ramUpgrade && ramPeakPct >= thresholds.RamPeakPassLimit;
+        bool ramWarn = ramKnown && !ramUpgrade && minAvailableGb < thresholds.AvailableRamPassGb;
 
         if (cpuUpgrade || ramUpgrade)
         {
@@ -98,15 +106,25 @@ public static class SizingAdvisorEngine
 
             if (ramUpgrade)
             {
-                reasons.Add($"RAM 峰值達 {ramPeakPct:0.#}% (> {thresholds.RamPeakWarnLimit:0.#}%)");
-                string targetRam = installedMemoryGb > 0 && installedMemoryGb <= 8.5 ? "16 GB" :
-                                   installedMemoryGb > 8.5 && installedMemoryGb <= 16.5 ? "32 GB" : "更高記憶體容量";
-                recs.Add($"建議升級記憶體至 {targetRam}");
+                reasons.Add($"最低可用記憶體 {minAvailableGb:0.0} GB (≤ {thresholds.AvailableRamUpgradeGb:0.#} GB)");
+                recs.Add(BuildRamRecommendation(peakUsedGb, installedMemoryGb, thresholds));
             }
             if (cpuUpgrade)
             {
                 reasons.Add($"CPU P95 達 {cpuP95:0.0}% (> {thresholds.CpuP95WarnLimit:0.#}%)");
                 recs.Add("建議更換較高核心數 / 時脈之 CPU 等級");
+            }
+
+            // 另一項指標雖未達升級線，但已接近上限時一併列出，避免只升級一項後仍不夠
+            if (cpuWarn)
+            {
+                reasons.Add($"CPU P95 {cpuP95:0.0}% 接近上限 (≥ {thresholds.CpuP95PassLimit:0.#}%)");
+                recs.Add("CPU 也已接近上限，換機時建議一併提高 CPU 等級");
+            }
+            if (ramWarn)
+            {
+                reasons.Add($"最低可用記憶體 {minAvailableGb:0.0} GB，低於建議餘裕 {thresholds.AvailableRamPassGb:0.#} GB");
+                recs.Add($"記憶體也已接近上限，{BuildRamRecommendation(peakUsedGb, installedMemoryGb, thresholds)}");
             }
 
             if (!string.IsNullOrEmpty(topTaskHint))
@@ -117,6 +135,7 @@ public static class SizingAdvisorEngine
             var parts = new List<string>();
             if (cpuUpgrade) parts.Add("處理器");
             if (ramUpgrade) parts.Add("記憶體");
+            string alsoTight = cpuWarn ? "；處理器也已接近上限" : ramWarn ? "；記憶體也已接近上限" : string.Empty;
 
             return new SizingVerdict
             {
@@ -124,7 +143,7 @@ public static class SizingAdvisorEngine
                 BadgeText = "建議升級機器等級",
                 ReasonSummary = string.Join("；", reasons),
                 Recommendation = string.Join("。", recs),
-                PlainSummary = $"這台電腦的{string.Join("和", parts)}不足以穩定應付目前的工作量，使用時可能變慢或卡頓，建議提高硬體規格。"
+                PlainSummary = $"這台電腦的{string.Join("和", parts)}不足以穩定應付目前的工作量，使用時可能變慢或卡頓，建議提高硬體規格{alsoTight}。"
             };
         }
 
@@ -132,11 +151,14 @@ public static class SizingAdvisorEngine
         {
             var reasons = new List<string>();
             if (cpuWarn) reasons.Add($"CPU P95 {cpuP95:0.0}% 接近警戒線 ({thresholds.CpuP95PassLimit:0.#}%)");
-            if (ramWarn) reasons.Add($"RAM 峰值 {ramPeakPct:0.#}% 接近警戒線 ({thresholds.RamPeakPassLimit:0.#}%)");
+            if (ramWarn) reasons.Add($"最低可用記憶體 {minAvailableGb:0.0} GB，低於建議餘裕 {thresholds.AvailableRamPassGb:0.#} GB");
 
-            string rec = string.IsNullOrEmpty(topTaskHint)
+            var recParts = new List<string>();
+            if (ramWarn) recParts.Add($"新採購{BuildRamRecommendation(peakUsedGb, installedMemoryGb, thresholds)}");
+            recParts.Add(string.IsNullOrEmpty(topTaskHint)
                 ? $"建議保留緩衝餘裕或評估次一級規格 (CPU Max={cpuMax:0.0}%)"
-                : $"效能接近上限，{topTaskHint}";
+                : $"效能接近上限，{topTaskHint}");
+            string rec = string.Join("。", recParts);
 
             var parts = new List<string>();
             if (cpuWarn) parts.Add("處理器");
@@ -156,10 +178,30 @@ public static class SizingAdvisorEngine
         {
             Level = SizingLevel.Pass,
             BadgeText = "規格餘裕充足 (PASS)",
-            ReasonSummary = $"CPU P95 {cpuP95:0.0}% (<{thresholds.CpuP95PassLimit:0.#}%)、RAM 峰值 {ramPeakPct:0.#}% (<{thresholds.RamPeakPassLimit:0.#}%)",
+            ReasonSummary = ramKnown
+                ? $"CPU P95 {cpuP95:0.0}% (<{thresholds.CpuP95PassLimit:0.#}%)、最低可用記憶體 {minAvailableGb:0.0} GB (≥ {thresholds.AvailableRamPassGb:0.#} GB)"
+                : $"CPU P95 {cpuP95:0.0}% (<{thresholds.CpuP95PassLimit:0.#}%)；無可用記憶體資料，未判定記憶體",
             Recommendation = "現行機器硬體效能足以負擔工作負載",
             PlainSummary = "這台電腦的硬體足以應付目前的工作量，而且還有餘裕。"
         };
+    }
+
+    private static readonly double[] MemoryTiersGb = { 4, 8, 16, 32, 64, 128 };
+
+    /// <summary>
+    /// 記憶體建議容量 = 測試最高已用 + 建議餘裕，取下一個常見容量規格（且大於現有容量）。
+    /// </summary>
+    public static string BuildRamRecommendation(double peakUsedGb, double installedMemoryGb, EvaluationThresholds thresholds)
+    {
+        if (peakUsedGb <= 0)
+        {
+            return "建議提高記憶體容量";
+        }
+
+        double needed = peakUsedGb + thresholds.AvailableRamPassGb;
+        double tier = MemoryTiersGb.FirstOrDefault(t => t >= needed && t > installedMemoryGb + 0.5);
+        string target = tier > 0 ? $"{tier:0} GB" : "更高記憶體容量";
+        return $"建議記憶體至少 {target}（測試最高用到 {peakUsedGb:0.0} GB，另保留 {thresholds.AvailableRamPassGb:0.#} GB 餘裕）";
     }
 
     private static SizingVerdict NoDataVerdict(string reason, string recommendation) => new()

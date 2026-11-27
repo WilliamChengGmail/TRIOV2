@@ -43,6 +43,13 @@ public sealed class BenchmarkSession : INotifyPropertyChanged
     public double RamPeakPercent { get; init; }
     public double RamOver85RatioPercent { get; init; }
 
+    /// <summary>測試期間最低可用記憶體（GB）；無資料時為 NaN。記憶體判定以此為準。</summary>
+    public double MinAvailableGb { get; init; } = double.NaN;
+
+    public bool HasAvailableMemory => !double.IsNaN(MinAvailableGb);
+
+    public string MinAvailableText => HasAvailableMemory ? $"剩 {MinAvailableGb:0.0} GB" : "RAM --";
+
     // 辨識運算事件統計
     public int RecognitionEventCount { get; init; }
     public double AvgRecognitionDurationMs { get; init; }

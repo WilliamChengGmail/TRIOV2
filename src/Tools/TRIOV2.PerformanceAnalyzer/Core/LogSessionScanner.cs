@@ -208,6 +208,7 @@ public static class LogSessionScanner
         // 計算系統統計指標
         double cpuAvg = 0, cpuMin = 0, cpuMax = 0, cpuP50 = 0, cpuP95 = 0, cpuP99 = 0, cpuStd = 0, cpuOver80 = 0;
         double ramAvgGb = 0, ramMinGb = 0, ramMaxGb = 0, ramAvgPct = 0, ramPeakPct = 0, ramOver85 = 0;
+        double minAvailableGb = double.NaN;
         int recogEvents = 0;
         double recogAvgMs = 0, recogMaxMs = 0;
 
@@ -235,6 +236,10 @@ public static class LogSessionScanner
             ramAvgPct = ramPctStats.Avg;
             ramPeakPct = ramPctStats.Max;
             ramOver85 = sysSamples.Count(s => s.MemoryPercent >= 85.0) * 100.0 / sysSamples.Count;
+            if (sysSamples.Any(s => s.AvailableMemoryGb > 0))
+            {
+                minAvailableGb = sysSamples.Min(s => s.AvailableMemoryGb);
+            }
 
             var recogList = sysSamples.Where(s => s.IsRecognizing).ToList();
             recogEvents = recogList.Count;
@@ -318,6 +323,12 @@ public static class LogSessionScanner
             };
         }
 
+        // 舊紀錄沒有逐秒可用記憶體時，以「安裝容量 − 最高已用」推估
+        if (double.IsNaN(minAvailableGb) && profile.MemoryInstalledGb > 0 && ramMaxGb > 0)
+        {
+            minAvailableGb = Math.Max(0, profile.MemoryInstalledGb - ramMaxGb);
+        }
+
         string folderName = Path.GetFileName(folderPath);
         DateTime measuredAt = ResolveMeasuredTime(folderName, refParsed, sysSamples, folderPath);
         TimeSpan duration = ResolveDuration(refParsed, sysSamples);
@@ -364,6 +375,7 @@ public static class LogSessionScanner
             RamAvgPercent = ramAvgPct,
             RamPeakPercent = ramPeakPct,
             RamOver85RatioPercent = ramOver85,
+            MinAvailableGb = minAvailableGb,
             RecognitionEventCount = recogEvents,
             AvgRecognitionDurationMs = recogAvgMs,
             MaxRecognitionDurationMs = recogMaxMs,

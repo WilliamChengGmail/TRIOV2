@@ -14,7 +14,7 @@ public static class ReportExporter
     public static void ExportCsv(string filePath, IEnumerable<DeviceAggregateSummary> devices)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("設備名稱,CPU型號,核心數,記憶體規格,OS名稱,OS版本,GPU,NPU,有效測試次數,系統CPU平均(%),系統CPU_P95(%),系統CPU峰值(%),記憶體平均(%),記憶體峰值(%),記憶體峰值(GB),適配結論,升級診斷建議,燈號,白話結論");
+        sb.AppendLine("設備名稱,CPU型號,核心數,記憶體規格,OS名稱,OS版本,GPU,NPU,有效測試次數,系統CPU平均(%),系統CPU_P95(%),系統CPU峰值(%),記憶體平均(%),記憶體峰值(%),記憶體峰值(GB),適配結論,升級診斷建議,燈號,白話結論,最低可用記憶體(GB)");
 
         foreach (var d in devices)
         {
@@ -38,7 +38,8 @@ public static class ReportExporter
                 Csv(d.Verdict.BadgeText),
                 Csv(d.Verdict.Recommendation),
                 Csv(d.Verdict.ShortLabel),
-                Csv(d.Verdict.PlainSummary)));
+                Csv(d.Verdict.PlainSummary),
+                double.IsNaN(d.MinAvailableGbAcrossRuns) ? "" : $"{d.MinAvailableGbAcrossRuns:0.0}"));
         }
 
         File.WriteAllText(filePath, sb.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
@@ -55,7 +56,7 @@ public static class ReportExporter
         sb.AppendLine($"- **分析路徑**：`{scannedPath}`");
         sb.AppendLine($"- **產生時間**：{DateTime.Now:yyyy-MM-dd HH:mm:ss}");
         sb.AppendLine($"- **分析工具**：TRIOV2.PerformanceAnalyzer (製作者：Office of William)");
-        sb.AppendLine($"- **驗收基準門檻**：CPU P95 `< {thresholds.CpuP95PassLimit:0}%`（警戒上限 `{thresholds.CpuP95WarnLimit:0}%`）、RAM Peak `< {thresholds.RamPeakPassLimit:0}%`（警戒上限 `{thresholds.RamPeakWarnLimit:0}%`）");
+        sb.AppendLine($"- **驗收基準門檻**：CPU P95 `< {thresholds.CpuP95PassLimit:0}%`（警戒上限 `{thresholds.CpuP95WarnLimit:0}%`）、最低可用記憶體 `≥ {thresholds.AvailableRamPassGb:0.#} GB`（升級線 `≤ {thresholds.AvailableRamUpgradeGb:0.#} GB`）");
         sb.AppendLine();
 
         var summary = FleetSummary.Build(devices);
@@ -74,8 +75,8 @@ public static class ReportExporter
         sb.AppendLine();
         sb.AppendLine("## 多設備規格與效能綜合對照表");
         sb.AppendLine();
-        sb.AppendLine("| 設備名稱 | 燈號 | CPU 規格 | 記憶體 | 作業系統 | 測試次數 | CPU Avg / P95 / Max | RAM Peak | 適配結論 | 診斷與建議 |");
-        sb.AppendLine("| :--- | :---: | :--- | :--- | :--- | :---: | :---: | :---: | :--- | :--- |");
+        sb.AppendLine("| 設備名稱 | 燈號 | CPU 規格 | 記憶體 | 作業系統 | 測試次數 | CPU Avg / P95 / Max | RAM Peak | 最低可用記憶體 | 適配結論 | 診斷與建議 |");
+        sb.AppendLine("| :--- | :---: | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :--- |");
 
         foreach (var d in devices)
         {
@@ -83,7 +84,7 @@ public static class ReportExporter
             sb.AppendLine(
                 $"| {d.DisplayName} | {d.Verdict.ShortLabel} | {hw.ShortCpuLabel} | {hw.ShortMemoryLabel} | {hw.ShortOsLabel} | " +
                 $"{d.IncludedRunCount} | {d.AvgCpuAcrossRuns:0.0}% / {d.MaxCpuP95AcrossRuns:0.0}% / {d.PeakCpuAcrossRuns:0.0}% | " +
-                $"{d.RamPeakDisplay} | **{d.Verdict.BadgeText}** | {d.Verdict.Recommendation} |");
+                $"{d.RamPeakDisplay} | {d.MinAvailableDisplay} | **{d.Verdict.BadgeText}** | {d.Verdict.Recommendation} |");
         }
 
         sb.AppendLine();
@@ -138,7 +139,7 @@ public static class ReportExporter
         sb.AppendLine("</style></head><body>");
         sb.AppendLine("<h1>TRIO V2 硬體效能數據與機器等級分析報告</h1>");
         sb.AppendLine($"<div class=\"meta\">分析路徑：{WebUtility.HtmlEncode(scannedPath)} ｜ 產出時間：{DateTime.Now:yyyy-MM-dd HH:mm:ss} ｜ 製作者：Office of William<br>");
-        sb.AppendLine($"判定門檻：CPU P95 &lt; {thresholds.CpuP95PassLimit:0}% (警戒 {thresholds.CpuP95WarnLimit:0}%)，RAM Peak &lt; {thresholds.RamPeakPassLimit:0}% (警戒 {thresholds.RamPeakWarnLimit:0}%)</div>");
+        sb.AppendLine($"判定門檻：CPU P95 &lt; {thresholds.CpuP95PassLimit:0}% (警戒 {thresholds.CpuP95WarnLimit:0}%)，最低可用記憶體 ≥ {thresholds.AvailableRamPassGb:0.#} GB (升級線 ≤ {thresholds.AvailableRamUpgradeGb:0.#} GB)</div>");
 
         var summary = FleetSummary.Build(devices);
         sb.AppendLine("<div class=\"card summary\"><div class=\"muted\">結論摘要：這些電腦的硬體夠不夠用？</div>");
@@ -153,11 +154,12 @@ public static class ReportExporter
         sb.AppendLine("<details style=\"margin-top:10px\"><summary>名詞說明（第一次看這份報告請展開）</summary><ul>");
         sb.AppendLine("<li><b>CPU（處理器）使用率</b>：電腦運算能力用掉多少，越高越忙；長時間接近 100% 就可能卡頓。</li>");
         sb.AppendLine("<li><b>P95</b>：測試期間 95% 的時間，使用率都低於這個數字。比「最高值」更能代表常態下的高負載，本報告以它判定處理器是否足夠。</li>");
-        sb.AppendLine("<li><b>RAM Peak（記憶體峰值）</b>：測試期間記憶體使用率的最高值；接近 100% 時電腦會明顯變慢。</li>");
+        sb.AppendLine("<li><b>最低可用記憶體</b>：測試期間剩下最少的可用記憶體（GB），本報告以它判定記憶體是否足夠：≥ 2 GB 有餘裕、≤ 1 GB 建議升級。以 GB 而非百分比判斷，是因為 TRIO V2 需要的記憶體量固定，不隨機器容量變化。</li>");
+        sb.AppendLine("<li><b>RAM Peak（記憶體峰值）</b>：測試期間記憶體用量與使用率的最高值，供參考。</li>");
         sb.AppendLine("<li><b>測試次數</b>：納入判定的測試數。短於 10 秒的試跑紀錄不列入，避免用幾秒鐘的資料下結論。</li>");
         sb.AppendLine("</ul></details></div>");
 
-        sb.AppendLine("<table><thead><tr><th>設備與規格</th><th>判定（白話說明）</th><th>測試次數</th><th>CPU Avg / P95 / Max</th><th>RAM Peak</th><th>技術依據與建議（SW）</th></tr></thead><tbody>");
+        sb.AppendLine("<table><thead><tr><th>設備與規格</th><th>判定（白話說明）</th><th>測試次數</th><th>CPU Avg / P95 / Max</th><th>RAM Peak</th><th>最低可用記憶體</th><th>技術依據與建議（SW）</th></tr></thead><tbody>");
         foreach (var d in devices)
         {
             var hw = d.HardwareProfile;
@@ -174,6 +176,7 @@ public static class ReportExporter
             sb.AppendLine($"<td>{WebUtility.HtmlEncode(d.RunCountDisplay)}</td>");
             sb.AppendLine($"<td>{d.AvgCpuAcrossRuns:0.0}% / <strong>{d.MaxCpuP95AcrossRuns:0.0}%</strong> / {d.PeakCpuAcrossRuns:0.0}%</td>");
             sb.AppendLine($"<td>{WebUtility.HtmlEncode(d.RamPeakDisplay)}</td>");
+            sb.AppendLine($"<td><strong>{WebUtility.HtmlEncode(d.MinAvailableDisplay)}</strong></td>");
             sb.AppendLine($"<td><span class=\"muted\">{WebUtility.HtmlEncode(d.Verdict.BadgeText)}</span><br>{WebUtility.HtmlEncode(d.Verdict.ReasonSummary)}<br><strong>{WebUtility.HtmlEncode(d.Verdict.Recommendation)}</strong></td>");
             sb.AppendLine("</tr>");
         }

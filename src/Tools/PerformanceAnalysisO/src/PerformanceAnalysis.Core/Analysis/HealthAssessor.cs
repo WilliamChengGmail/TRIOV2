@@ -41,6 +41,12 @@ public static class HealthAssessor
             "記憶體接近用盡",
             "可用記憶體所剩無幾，系統可能明顯變慢，甚至造成程式異常結束。",
             "請 SW 檢查記憶體用量最高的任務，評估優化程式或提高硬體規格。"),
+        ["RAM_LOW_HEADROOM"] = new(
+            FindingImpact.Attention,
+            FindingCategory.Performance,
+            "記憶體餘裕偏少",
+            "測試期間剩下的可用記憶體不多，目前仍可運作；遇到 Windows 更新、防毒掃描等背景工作時可能不夠用。",
+            "以完整操作流程再測一次確認；新採購機台建議提高記憶體容量。"),
         ["TASK_RESTARTS"] = new(
             FindingImpact.Problem,
             FindingCategory.Performance,

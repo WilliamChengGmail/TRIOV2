@@ -75,13 +75,25 @@
                         </StackPanel>
 
                         <StackPanel Width="250" Margin="0,0,16,14">
-                            <TextBlock Text="可用記憶體下限 (GB)" Style="{StaticResource MutedText}" />
+                            <TextBlock Text="可用記憶體異常門檻 (GB)" Style="{StaticResource MutedText}" />
                             <TextBox Text="{Binding AvailableRamMinimumGbText, UpdateSourceTrigger=PropertyChanged}"
                                      Margin="0,4,0,0"
                                      Tag="1" />
-                            <TextBlock Text="可用 RAM 低於此值時提示"
+                            <TextBlock Text="測試期間最低可用記憶體 ≤ 此值列為「異常」"
                                        Style="{StaticResource MutedText}"
                                        FontSize="10.5"
+                                       Margin="0,3,0,0" />
+                        </StackPanel>
+
+                        <StackPanel Width="250" Margin="0,0,16,14">
+                            <TextBlock Text="可用記憶體注意門檻 (GB)" Style="{StaticResource MutedText}" />
+                            <TextBox Text="{Binding AvailableRamAttentionGbText, UpdateSourceTrigger=PropertyChanged}"
+                                     Margin="0,4,0,0"
+                                     Tag="2" />
+                            <TextBlock Text="最低可用記憶體低於此值列為「注意」；以 GB 判斷，不受機器容量影響"
+                                       Style="{StaticResource MutedText}"
+                                       FontSize="10.5"
+                                       TextWrapping="Wrap"
                                        Margin="0,3,0,0" />
                         </StackPanel>
 

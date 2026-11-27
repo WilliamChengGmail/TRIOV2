@@ -51,6 +51,8 @@ public sealed class HealthAssessorTests
     [Theory]
     [InlineData("CPU_P95_ELEVATED", HealthLevel.Attention)]
     [InlineData("CPU_P95_HIGH", HealthLevel.Problem)]
+    [InlineData("RAM_LOW_HEADROOM", HealthLevel.Attention)]
+    [InlineData("RAM_HIGH", HealthLevel.Problem)]
     public void CpuP95FindingsMapToLevels(string code, HealthLevel expected)
     {
         var health = HealthAssessor.Assess(CreateSession(

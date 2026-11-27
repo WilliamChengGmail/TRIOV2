@@ -610,25 +610,34 @@ public sealed class SessionAnalyzer
             }
         }
 
-        if (aggregate.MemoryUsagePercent.HasData
-            && aggregate.MemoryUsagePercent.Max >= options.RamHighPercent)
+        // 記憶體以「測試期間最低可用記憶體（GB）」為主要判斷：
+        // TRIO V2 需要的記憶體量是固定的，百分比在不同容量的機器上意義不同；
+        // 記憶體用盡即使只有一瞬間也會造成換頁或程式被關閉，所以取最低值而非 P5。
+        var hasAvailable = samples.Count > 0 && samples.Max(sample => sample.MemoryAvailableGb) > 0;
+        var minimumAvailable = hasAvailable ? samples.Min(sample => sample.MemoryAvailableGb) : double.NaN;
+
+        if (hasAvailable && minimumAvailable <= options.AvailableRamMinimumGb)
         {
+            diagnostics.Add(new Diagnostic(
+                DiagnosticSeverity.Warning,
+                "RAM_HIGH",
+                $"{folderName}: 可用記憶體最低 {minimumAvailable:0.0} GB，已達或低於門檻 {options.AvailableRamMinimumGb:0.0} GB"));
+        }
+        else if (aggregate.MemoryUsagePercent.HasData
+                 && aggregate.MemoryUsagePercent.Max >= options.RamHighPercent)
+        {
+            // 輔助判斷：沒有可用記憶體欄位的舊紀錄，或使用率已極高
             diagnostics.Add(new Diagnostic(
                 DiagnosticSeverity.Warning,
                 "RAM_HIGH",
                 $"{folderName}: 記憶體使用率最高 {aggregate.MemoryUsagePercent.Max:0.#}%，超過門檻 {options.RamHighPercent:0.#}%"));
         }
-        else if (samples.Count > 0)
+        else if (hasAvailable && minimumAvailable < options.AvailableRamAttentionGb)
         {
-            var minimumAvailable = samples.Min(sample => sample.MemoryAvailableGb);
-            var maximumAvailable = samples.Max(sample => sample.MemoryAvailableGb);
-            if (maximumAvailable > 0 && minimumAvailable <= options.AvailableRamMinimumGb)
-            {
-                diagnostics.Add(new Diagnostic(
-                    DiagnosticSeverity.Warning,
-                    "RAM_HIGH",
-                    $"{folderName}: 可用記憶體最低 {minimumAvailable:0.00} GB，已達或低於門檻 {options.AvailableRamMinimumGb:0.00} GB"));
-            }
+            diagnostics.Add(new Diagnostic(
+                DiagnosticSeverity.Warning,
+                "RAM_LOW_HEADROOM",
+                $"{folderName}: 可用記憶體最低 {minimumAvailable:0.0} GB，低於建議餘裕 {options.AvailableRamAttentionGb:0.0} GB"));
         }
 
         if (duration.TotalSeconds >= options.MemoryGrowthMinimumSeconds
